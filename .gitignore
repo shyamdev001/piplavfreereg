@@ -1,0 +1,41 @@
+## Dependencies
+node_modules/
+**/node_modules/
+
+## Build output
+dist/
+build/
+**/dist/
+**/build/
+
+## Env files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+## Logs
+*.log
+npm-debug.log*
+
+## Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Testing
+coverage/
+
+## Misc
+*.tsbuildinfo
+.eslintcache
+
+## Local tool state
+.claude/scheduled_tasks.lock
+**/.impeccable/hook.cache.json
+.kilo/
+.qoder/

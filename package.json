@@ -1,0 +1,19 @@
+{
+  "name": "piplav-solar-registration",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Piplav Village Solar Registration - monorepo root",
+  "scripts": {
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "seed": "npm --prefix server run seed",
+    "test": "npm --prefix server run test",
+    "create-admin": "npm --prefix server run create-admin",
+    "build": "npm --prefix server ci --include=dev && npm --prefix client ci --include=dev && npm --prefix server run build && npm --prefix client run build",
+    "start": "npm --prefix server start"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
