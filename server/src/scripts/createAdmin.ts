@@ -7,14 +7,20 @@ import { UserRole, UserStatus } from '../types/enums';
 /**
  * Creates the admin account from SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD.
  * Unlike `seed`, this never deletes anything and adds no sample data, so it is
- * safe to run against a fresh production database.
+ * safe to run against a fresh production database. Pass --reset-password to
+ * set an existing admin's password to SEED_ADMIN_PASSWORD.
  */
 async function createAdmin() {
   await connectDatabase();
 
   const existing = await User.findOne({ email: env.seedAdminEmail.toLowerCase() });
-  if (existing) {
-    console.log(`[create-admin] ${existing.email} already exists - nothing changed.`);
+  if (existing && process.argv.includes('--reset-password')) {
+    existing.passwordHash = await bcrypt.hash(env.seedAdminPassword, 12);
+    existing.status = UserStatus.ACTIVE;
+    await existing.save();
+    console.log(`[create-admin] reset the password for ${existing.email} to SEED_ADMIN_PASSWORD from .env`);
+  } else if (existing) {
+    console.log(`[create-admin] ${existing.email} already exists - nothing changed (use --reset-password to set a new password).`);
   } else {
     const admin = await User.create({
       name: 'Piplav Admin',
