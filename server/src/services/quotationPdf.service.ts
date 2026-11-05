@@ -17,6 +17,9 @@ export interface QuotationPdfData {
   address: string;
   mobileNumber: string;
   category: QuotationCategory;
+  /** System price alone; older quotations without it use `amount`. */
+  basePrice?: number;
+  extras?: Array<{ name: string; description?: string; price: number }>;
   amount: number;
   quotationDate: Date;
   expiryDate: Date;
@@ -218,16 +221,26 @@ export async function buildQuotationPdf(data: QuotationPdfData): Promise<Buffer>
   w.textRight('GST', colGst, tableTop + 8, 8.5, head);
   w.textRight('TOTAL', tableRight - 8, tableTop + 8, 8.5, head);
 
-  const rowTop = tableTop + 36;
-  w.text('1', tableLeft + 10, rowTop, 8.5);
-  w.text(QUOTATION_SYSTEM.title, tableLeft + 32, rowTop, 9, { bold: true, color: ORANGE });
-  const descH = w.paragraph(QUOTATION_SYSTEM.description, tableLeft + 32, rowTop + 16, 9, 240, { color: MUTED, lineGap: 1.45 });
-  w.text('1', colQty + 4, rowTop, 8.5);
-  w.textRight(formatIndianAmount(data.amount), colRate, rowTop, 8.5);
-  w.money(0, colGst, rowTop, 8.5);
-  w.money(data.amount, tableRight - 8, rowTop, 8.5, { bold: true, color: ORANGE });
-  const rowBottom = rowTop + 16 + descH + 12;
-  w.line(tableLeft, rowBottom, tableRight, rowBottom);
+  // Row 1 is the solar system; each ticked add-on (Insurance, WiFi dongle, ...) follows.
+  const items = [
+    { title: QUOTATION_SYSTEM.title, description: QUOTATION_SYSTEM.description, price: data.basePrice ?? data.amount },
+    ...(data.extras ?? []).map((e) => ({ title: e.name, description: e.description, price: e.price })),
+  ];
+  let rowBottom = tableTop + 24;
+  items.forEach((item, i) => {
+    const rowTop = rowBottom + 12;
+    w.text(String(i + 1), tableLeft + 10, rowTop, 8.5);
+    const titleH = w.paragraph(item.title, tableLeft + 32, rowTop, 9, 240, { bold: true, color: ORANGE });
+    const descH = item.description
+      ? w.paragraph(item.description, tableLeft + 32, rowTop + titleH + 2, 9, 240, { color: MUTED, lineGap: 1.45 }) + 2
+      : 0;
+    w.text('1', colQty + 4, rowTop, 8.5);
+    w.textRight(formatIndianAmount(item.price), colRate, rowTop, 8.5);
+    w.money(0, colGst, rowTop, 8.5);
+    w.money(item.price, tableRight - 8, rowTop, 8.5, { bold: true, color: ORANGE });
+    rowBottom = rowTop + titleH + descH + 8;
+    w.line(tableLeft, rowBottom, tableRight, rowBottom);
+  });
   w.rect(tableLeft, tableTop, tableRight - tableLeft, rowBottom - tableTop, { border: GREEN });
 
   // ---- Totals ----

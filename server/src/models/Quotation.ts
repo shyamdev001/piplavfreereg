@@ -1,5 +1,12 @@
 import { Schema, model, Document, Types } from 'mongoose';
-import { QuotationCategory } from '../config/quotation';
+import { QuotationCategory, QuotationVillage } from '../config/quotation';
+
+/** Add-on copied onto the quotation, so later price changes don't alter it. */
+export interface IQuotationLineExtra {
+  name: string;
+  description?: string;
+  price: number;
+}
 
 export interface IQuotation extends Document {
   _id: Types.ObjectId;
@@ -7,8 +14,12 @@ export interface IQuotation extends Document {
   customerName: string;
   address: string;
   mobileNumber: string;
+  village: QuotationVillage;
   category: QuotationCategory;
-  /** Price at the time the quotation was made (prices may change later). */
+  /** Price of the 2.18 kW system alone (missing on quotations made before add-ons existed). */
+  basePrice?: number;
+  extras: IQuotationLineExtra[];
+  /** Grand total at the time the quotation was made (prices may change later). */
   amount: number;
   systemSizeKw: number;
   quotationDate: Date;
@@ -25,7 +36,19 @@ const quotationSchema = new Schema<IQuotation>(
     customerName: { type: String, required: true, trim: true, maxlength: 120 },
     address: { type: String, required: true, trim: true, maxlength: 300 },
     mobileNumber: { type: String, required: true, trim: true },
+    // Quotations made before villages existed were all for Piplav.
+    village: { type: String, enum: Object.values(QuotationVillage), default: QuotationVillage.PIPLAV },
     category: { type: String, enum: Object.values(QuotationCategory), required: true },
+    basePrice: { type: Number },
+    extras: {
+      type: [
+        new Schema<IQuotationLineExtra>(
+          { name: { type: String, required: true }, description: String, price: { type: Number, required: true } },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
     amount: { type: Number, required: true },
     systemSizeKw: { type: Number, required: true },
     quotationDate: { type: Date, required: true },

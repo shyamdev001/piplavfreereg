@@ -22,6 +22,28 @@ describe('Quotations', () => {
     expect(scst.status).toBe(201);
     expect(scst.body.quotation.amount).toBe(102695); // client-sent amount is ignored
     expect(scst.body.quotation.quotationNumber).toMatch(/-0002$/);
+    expect(scst.body.quotation.village).toBe('PIPLAV'); // default
+  });
+
+  it('uses the other-village prices and only allows that village categories', async () => {
+    const { user } = await createUser({ role: UserRole.QUOTATION });
+    const cookie = authCookieFor(user);
+    const post = (body: object) => request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, ...body });
+
+    const general = await post({ village: 'OTHER', category: 'GENERAL' });
+    expect(general.status).toBe(201);
+    expect(general.body.quotation.amount).toBe(110700);
+    expect(general.body.quotation.village).toBe('OTHER');
+    expect((await post({ village: 'OTHER', category: 'PASHUPALAK' })).body.quotation.amount).toBe(108700);
+    expect((await post({ village: 'PIPLAV', category: 'GENERAL' })).body.quotation.amount).toBe(97290);
+
+    expect((await post({ village: 'OTHER', category: 'SC_ST' })).status).toBe(400);
+    expect((await post({ village: 'PIPLAV', category: 'PASHUPALAK' })).status).toBe(400);
+    expect((await post({ village: 'ANAND', category: 'GENERAL' })).status).toBe(400);
+
+    const pdf = await request(app).get(`/api/quotations/${general.body.quotation._id}/pdf?inline=1`).set('Cookie', cookie).buffer(true);
+    expect(pdf.status).toBe(200);
+    expect(pdf.headers['content-disposition']).toContain('inline;');
   });
 
   it('returns a PDF download', async () => {
@@ -60,6 +82,47 @@ describe('Quotations', () => {
     expect((await request(app).post('/api/quotations').set('Cookie', authCookieFor(viewer)).send({ ...customer, category: 'GENERAL' })).status).toBe(403);
     expect((await request(app).delete(`/api/quotations/${mine.body.quotation._id}`).set('Cookie', authCookieFor(q1))).status).toBe(403);
     expect((await request(app).delete(`/api/quotations/${mine.body.quotation._id}`).set('Cookie', authCookieFor(admin))).status).toBe(200);
+  });
+
+  it('adds ticked add-ons to the total; only admins manage the add-on list', async () => {
+    const { user: admin } = await createUser({ role: UserRole.ADMIN });
+    const { user: quoter } = await createUser({ role: UserRole.QUOTATION });
+    const adminCookie = authCookieFor(admin);
+    const cookie = authCookieFor(quoter);
+
+    const insurance = await request(app).post('/api/quotations/extras').set('Cookie', adminCookie).send({ name: 'Insurance', description: '5 years', price: 1500 });
+    expect(insurance.status).toBe(201);
+    const dongle = await request(app).post('/api/quotations/extras').set('Cookie', adminCookie).send({ name: 'WiFi Dongle', price: 2000 });
+    const retired = await request(app).post('/api/quotations/extras').set('Cookie', adminCookie).send({ name: 'Old item', price: 99, active: false });
+    expect((await request(app).post('/api/quotations/extras').set('Cookie', cookie).send({ name: 'Hack', price: 0 })).status).toBe(403);
+
+    const offered = await request(app).get('/api/quotations/extras').set('Cookie', cookie);
+    expect(offered.body.extras.map((e: { name: string }) => e.name)).toEqual(['Insurance', 'WiFi Dongle']);
+    expect((await request(app).get('/api/quotations/extras').set('Cookie', adminCookie)).body.extras).toHaveLength(3);
+
+    const ids = [insurance.body.extra._id, dongle.body.extra._id];
+    const q = await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL', extraIds: ids });
+    expect(q.status).toBe(201);
+    expect(q.body.quotation.basePrice).toBe(97290);
+    expect(q.body.quotation.amount).toBe(97290 + 1500 + 2000);
+    expect(q.body.quotation.extras).toEqual([
+      { name: 'Insurance', description: '5 years', price: 1500 },
+      { name: 'WiFi Dongle', price: 2000 },
+    ]);
+
+    // Inactive or unknown add-ons are refused.
+    expect((await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL', extraIds: [retired.body.extra._id] })).status).toBe(400);
+    expect((await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL', extraIds: ['507f1f77bcf86cd799439011'] })).status).toBe(400);
+
+    // Changing or deleting an add-on later leaves the saved quotation alone.
+    await request(app).patch(`/api/quotations/extras/${insurance.body.extra._id}`).set('Cookie', adminCookie).send({ price: 9999 });
+    await request(app).delete(`/api/quotations/extras/${dongle.body.extra._id}`).set('Cookie', adminCookie);
+    const list = await request(app).get('/api/quotations').set('Cookie', cookie);
+    expect(list.body.quotations[0].amount).toBe(100790);
+
+    const pdf = await request(app).get(`/api/quotations/${q.body.quotation._id}/pdf`).set('Cookie', cookie).buffer(true);
+    expect(pdf.status).toBe(200);
+    expect((await request(app).patch('/api/quotations/extras/not-an-id').set('Cookie', adminCookie).send({ price: 1 })).status).toBe(400);
   });
 
   it('blocks quotation users from registrations, documents and agents', async () => {

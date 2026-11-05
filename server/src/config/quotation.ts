@@ -1,25 +1,45 @@
 /**
  * Fixed content of the Piplav 2.18 kW solar quotation. The quotation user only
- * enters the customer's name, address, mobile and category; everything else
+ * enters the customer's name, address, mobile, village and category; everything else
  * (system, price, seller, bank, notes) comes from here.
  */
+
+export const QuotationVillage = {
+  PIPLAV: 'PIPLAV',
+  OTHER: 'OTHER',
+} as const;
+export type QuotationVillage = (typeof QuotationVillage)[keyof typeof QuotationVillage];
+
+export const QUOTATION_VILLAGE_LABELS: Record<QuotationVillage, string> = {
+  PIPLAV: 'Piplav',
+  OTHER: 'Other',
+};
 
 export const QuotationCategory = {
   GENERAL: 'GENERAL',
   SC_ST: 'SC_ST',
+  PASHUPALAK: 'PASHUPALAK',
 } as const;
 export type QuotationCategory = (typeof QuotationCategory)[keyof typeof QuotationCategory];
 
 export const QUOTATION_CATEGORY_LABELS: Record<QuotationCategory, string> = {
   GENERAL: 'General',
   SC_ST: 'SC/ST',
+  PASHUPALAK: 'Pashupalak',
 };
 
-/** Total price (incl. everything, GST shown as 0) per customer category, in rupees. */
-export const QUOTATION_PRICES: Record<QuotationCategory, number> = {
-  GENERAL: 97290,
-  SC_ST: 102695,
+/**
+ * Total price (incl. everything, GST shown as 0) in rupees, per village and
+ * customer category. Each village only offers the categories listed for it.
+ */
+export const QUOTATION_PRICES: Record<QuotationVillage, Partial<Record<QuotationCategory, number>>> = {
+  PIPLAV: { GENERAL: 97290, SC_ST: 102695 },
+  OTHER: { GENERAL: 110700, PASHUPALAK: 108700 },
 };
+
+export function quotationPrice(village: QuotationVillage, category: QuotationCategory): number | undefined {
+  return QUOTATION_PRICES[village][category];
+}
 
 export const QUOTATION_SYSTEM = {
   sizeKw: 2.18,
