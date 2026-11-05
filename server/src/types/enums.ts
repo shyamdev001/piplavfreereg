@@ -3,6 +3,8 @@ export const UserRole = {
   AGENT: 'AGENT',
   /** Read-only: sees every registration and can view/download documents, but changes nothing. */
   VIEWER: 'VIEWER',
+  /** Makes customer quotations only; has no access to registrations. */
+  QUOTATION: 'QUOTATION',
 } as const;
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
@@ -79,5 +81,8 @@ export const AuditAction = {
   AGENT_DISABLED: 'AGENT_DISABLED',
   AGENT_ENABLED: 'AGENT_ENABLED',
   AGENT_CREDENTIALS_RESET: 'AGENT_CREDENTIALS_RESET',
+  QUOTATION_CREATED: 'QUOTATION_CREATED',
+  QUOTATION_DOWNLOADED: 'QUOTATION_DOWNLOADED',
+  QUOTATION_DELETED: 'QUOTATION_DELETED',
 } as const;
 export type AuditAction = (typeof AuditAction)[keyof typeof AuditAction];

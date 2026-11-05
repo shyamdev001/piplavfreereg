@@ -36,7 +36,7 @@ const createAgentSchema = z.object({
   email: z.string().trim().email('Enter a valid email'),
   phone: z.string().trim().regex(/^[0-9]{10}$/, 'Enter a valid 10-digit phone number'),
   password: passwordRules,
-  role: z.enum(['AGENT', 'VIEWER']),
+  role: z.enum(['AGENT', 'VIEWER', 'QUOTATION']),
 });
 type CreateAgentForm = z.infer<typeof createAgentSchema>;
 
@@ -44,6 +44,8 @@ const resetPasswordSchema = z.object({
   newPassword: passwordRules,
 });
 type ResetPasswordForm = z.infer<typeof resetPasswordSchema>;
+
+const ROLE_LABEL: Record<Agent['role'], string> = { AGENT: 'Agent', VIEWER: 'Viewer', QUOTATION: 'Quotation' };
 
 export function AgentsPage() {
   const [agents, setAgents] = React.useState<Agent[]>([]);
@@ -53,7 +55,8 @@ export function AgentsPage() {
   const [resetTarget, setResetTarget] = React.useState<Agent | null>(null);
   const [showResetPassword, setShowResetPassword] = React.useState(false);
 
-  const fieldAgentCount = agents.filter((a) => a.role !== 'VIEWER').length;
+  const fieldAgentCount = agents.filter((a) => a.role === 'AGENT').length;
+  const otherCount = agents.length - fieldAgentCount;
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -85,7 +88,7 @@ export function AgentsPage() {
   const onCreate = async (values: CreateAgentForm) => {
     try {
       const { agent } = await agentService.createAgent(values);
-      toast.success(`${agent.role === 'VIEWER' ? 'Viewer' : 'Agent'} ${agent.name} created.`);
+      toast.success(`${ROLE_LABEL[agent.role]} ${agent.name} created.`);
       setAddOpen(false);
       resetCreateForm();
       setShowCreatePassword(false);
@@ -124,8 +127,8 @@ export function AgentsPage() {
         <div>
           <h1 className="text-[1.75rem] font-extrabold tracking-tight text-foreground">Team</h1>
           <p className="text-sm text-muted-foreground">
-            {fieldAgentCount} agent{fieldAgentCount === 1 ? '' : 's'} · {agents.length - fieldAgentCount} viewer
-            {agents.length - fieldAgentCount === 1 ? '' : 's'}
+            {fieldAgentCount} field agent{fieldAgentCount === 1 ? '' : 's'} · {otherCount} other account
+            {otherCount === 1 ? '' : 's'}
           </p>
         </div>
         <Dialog
@@ -150,11 +153,12 @@ export function AgentsPage() {
             </DialogHeader>
             <form onSubmit={handleCreateSubmit(onCreate)} className="space-y-4">
               <FormField label="Account type" htmlFor="role" required>
-                <div id="role" className="grid grid-cols-2 gap-2">
+                <div id="role" className="grid gap-2 sm:grid-cols-3">
                   {(
                     [
                       { value: 'AGENT', title: 'Field Agent', hint: 'Adds and edits registrations' },
                       { value: 'VIEWER', title: 'Viewer', hint: 'Sees everything, downloads documents, edits nothing' },
+                      { value: 'QUOTATION', title: 'Quotation', hint: 'Only makes customer quotations' },
                     ] as const
                   ).map((option) => (
                     <label
@@ -252,7 +256,7 @@ export function AgentsPage() {
                       {agent.status}
                     </span>
                     <span className="rounded-full bg-secondary px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">
-                      {agent.role === 'VIEWER' ? 'Viewer' : 'Agent'}
+                      {ROLE_LABEL[agent.role]}
                     </span>
                   </div>
                 </div>
@@ -263,9 +267,9 @@ export function AgentsPage() {
                   <span>Joined {formatDate(agent.createdAt)}</span>
                 </div>
 
-                {agent.role === 'VIEWER' ? (
+                {agent.role !== 'AGENT' ? (
                   <p className="rounded-xl bg-secondary/60 px-3.5 py-2.5 text-sm font-medium text-muted-foreground">
-                    Read-only access to all registrations
+                    {agent.role === 'VIEWER' ? 'Read-only access to all registrations' : 'Makes customer quotations'}
                   </p>
                 ) : (
                 <Link

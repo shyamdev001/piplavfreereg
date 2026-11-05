@@ -1,16 +1,23 @@
 import * as React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, ClipboardList, ScrollText, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, ScrollText, FileText, LogOut, Menu, X } from 'lucide-react';
+import type { UserRole } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { cn, initials } from '@/lib/utils';
 import { Logo } from '@/components/brand/Logo';
 
-const NAV_ITEMS = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true, adminOnly: false },
-  { to: '/admin/leads', label: 'Registrations', icon: ClipboardList, adminOnly: false },
-  { to: '/admin/agents', label: 'Team', icon: Users, adminOnly: true },
-  { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText, adminOnly: true },
+const NAV_ITEMS: Array<{ to: string; label: string; icon: typeof Users; end?: boolean; roles: UserRole[] }> = [
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true, roles: ['ADMIN', 'VIEWER'] },
+  { to: '/admin/leads', label: 'Registrations', icon: ClipboardList, roles: ['ADMIN', 'VIEWER'] },
+  { to: '/quotations', label: 'Quotations', icon: FileText, roles: ['ADMIN', 'VIEWER', 'QUOTATION'] },
+  { to: '/admin/agents', label: 'Team', icon: Users, roles: ['ADMIN'] },
+  { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText, roles: ['ADMIN'] },
 ];
+
+const ROLE_CAPTION: Partial<Record<UserRole, string>> = {
+  VIEWER: 'Viewer (read-only)',
+  QUOTATION: 'Quotations',
+};
 
 export function AdminLayout() {
   const { user, logout } = useAuth();
@@ -22,7 +29,7 @@ export function AdminLayout() {
         <Logo size={38} variant="lockup" />
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-3">
-        {NAV_ITEMS.filter((item) => !item.adminOnly || user?.role === 'ADMIN').map((item) => (
+        {NAV_ITEMS.filter((item) => user && item.roles.includes(user.role)).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -50,7 +57,7 @@ export function AdminLayout() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">{user?.name}</p>
             <p className="truncate text-xs text-muted-foreground">
-              {user?.role === 'VIEWER' ? 'Viewer (read-only)' : user?.email}
+              {(user && ROLE_CAPTION[user.role]) ?? user?.email}
             </p>
           </div>
           <button

@@ -25,7 +25,8 @@ import documentRoutes from './document.routes';
 
 const router = Router();
 
-router.use(requireAuth);
+// Quotation-only users never see registrations.
+router.use(requireAuth, requireRole(UserRole.AGENT, UserRole.ADMIN, UserRole.VIEWER));
 
 router.get('/', validate({ query: listLeadsQuerySchema }), listLeads);
 router.get('/duplicates', validate({ query: checkDuplicateQuerySchema }), checkDuplicateLead);

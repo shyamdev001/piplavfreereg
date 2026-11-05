@@ -27,6 +27,9 @@ const AdminLeadDetailPage = lazy(() =>
   import('@/pages/admin/AdminLeadDetailPage').then((m) => ({ default: m.AdminLeadDetailPage })),
 );
 const AgentsPage = lazy(() => import('@/pages/admin/AgentsPage').then((m) => ({ default: m.AgentsPage })));
+const QuotationsPage = lazy(() =>
+  import('@/pages/quotations/QuotationsPage').then((m) => ({ default: m.QuotationsPage })),
+);
 const AuditLogPage = lazy(() =>
   import('@/pages/admin/AuditLogPage').then((m) => ({ default: m.AuditLogPage })),
 );
@@ -79,6 +82,12 @@ export default function App() {
             <Route path="/admin/audit-logs" element={<AuditLogPage />} />
           </Route>
           <Route path="/admin/leads/:id/edit" element={<LeadWizardPage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'VIEWER', 'QUOTATION']} />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/quotations" element={<QuotationsPage />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

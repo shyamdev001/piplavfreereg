@@ -42,7 +42,7 @@ export function LeadsTablePage() {
   const [showArchived, setShowArchived] = React.useState(false);
 
   React.useEffect(() => {
-    agentService.listAgents().then((list) => setAgents(list.filter((a) => a.role !== 'VIEWER'))).catch(() => undefined);
+    agentService.listAgents().then((list) => setAgents(list.filter((a) => a.role === 'AGENT'))).catch(() => undefined);
   }, []);
 
   const fetchLeads = React.useCallback(() => {

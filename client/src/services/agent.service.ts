@@ -16,7 +16,7 @@ export async function createAgent(payload: {
   email: string;
   phone: string;
   password: string;
-  role: 'AGENT' | 'VIEWER';
+  role: 'AGENT' | 'VIEWER' | 'QUOTATION';
 }): Promise<{ agent: Agent }> {
   const { data } = await api.post('/agents', payload);
   return data;
