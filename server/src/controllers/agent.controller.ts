@@ -7,8 +7,11 @@ import { Lead } from '../models/Lead';
 import { UserRole, UserStatus, AuditAction } from '../types/enums';
 import { recordAudit } from '../services/audit.service';
 
+/** Accounts an admin manages on the Team page: field agents and read-only viewers. */
+const MANAGED_ROLES = { $in: [UserRole.AGENT, UserRole.VIEWER] };
+
 export const listAgents = catchAsync(async (_req: Request, res: Response) => {
-  const agents = await User.find({ role: UserRole.AGENT }).sort({ createdAt: -1 }).lean();
+  const agents = await User.find({ role: MANAGED_ROLES }).sort({ createdAt: -1 }).lean();
 
   const leadCounts = await Lead.aggregate([
     { $match: { isDraft: false } },
@@ -22,6 +25,7 @@ export const listAgents = catchAsync(async (_req: Request, res: Response) => {
       name: a.name,
       email: a.email,
       phone: a.phone,
+      role: a.role,
       status: a.status,
       createdAt: a.createdAt,
       totalLeads: countMap.get(a._id.toString()) ?? 0,
@@ -30,7 +34,7 @@ export const listAgents = catchAsync(async (_req: Request, res: Response) => {
 });
 
 export const getAgent = catchAsync(async (req: Request, res: Response) => {
-  const agent = await User.findOne({ _id: req.params.id, role: UserRole.AGENT }).lean();
+  const agent = await User.findOne({ _id: req.params.id, role: MANAGED_ROLES }).lean();
   if (!agent) throw ApiError.notFound('Agent not found');
 
   const totalLeads = await Lead.countDocuments({ createdBy: agent._id, isDraft: false });
@@ -41,6 +45,7 @@ export const getAgent = catchAsync(async (req: Request, res: Response) => {
       name: agent.name,
       email: agent.email,
       phone: agent.phone,
+      role: agent.role,
       status: agent.status,
       createdAt: agent.createdAt,
       totalLeads,
@@ -49,7 +54,7 @@ export const getAgent = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const createAgent = catchAsync(async (req: Request, res: Response) => {
-  const { name, email, phone, password } = req.body;
+  const { name, email, phone, password, role } = req.body;
 
   const existing = await User.findOne({ email });
   if (existing) throw ApiError.conflict('An account with this email already exists');
@@ -61,7 +66,7 @@ export const createAgent = catchAsync(async (req: Request, res: Response) => {
     email,
     phone,
     passwordHash,
-    role: UserRole.AGENT,
+    role,
     status: UserStatus.ACTIVE,
     mustChangePassword: false,
   });
@@ -72,16 +77,17 @@ export const createAgent = catchAsync(async (req: Request, res: Response) => {
     targetType: 'User',
     targetId: agent._id.toString(),
     targetLabel: agent.name,
+    details: role === UserRole.VIEWER ? 'Viewer account' : undefined,
     req,
   });
 
   res.status(201).json({
-    agent: { id: agent._id, name: agent.name, email: agent.email, phone: agent.phone, status: agent.status },
+    agent: { id: agent._id, name: agent.name, email: agent.email, phone: agent.phone, role: agent.role, status: agent.status },
   });
 });
 
 export const updateAgent = catchAsync(async (req: Request, res: Response) => {
-  const agent = await User.findOne({ _id: req.params.id, role: UserRole.AGENT });
+  const agent = await User.findOne({ _id: req.params.id, role: MANAGED_ROLES });
   if (!agent) throw ApiError.notFound('Agent not found');
 
   if (req.body.name !== undefined) agent.name = req.body.name;
@@ -101,7 +107,7 @@ export const updateAgent = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const updateAgentStatus = catchAsync(async (req: Request, res: Response) => {
-  const agent = await User.findOne({ _id: req.params.id, role: UserRole.AGENT }).select('+refreshTokenVersion');
+  const agent = await User.findOne({ _id: req.params.id, role: MANAGED_ROLES }).select('+refreshTokenVersion');
   if (!agent) throw ApiError.notFound('Agent not found');
 
   agent.status = req.body.status;
@@ -123,7 +129,7 @@ export const updateAgentStatus = catchAsync(async (req: Request, res: Response) 
 });
 
 export const resetAgentCredentials = catchAsync(async (req: Request, res: Response) => {
-  const agent = await User.findOne({ _id: req.params.id, role: UserRole.AGENT }).select('+refreshTokenVersion');
+  const agent = await User.findOne({ _id: req.params.id, role: MANAGED_ROLES }).select('+refreshTokenVersion');
   if (!agent) throw ApiError.notFound('Agent not found');
 
   agent.passwordHash = await bcrypt.hash(req.body.newPassword, 12);

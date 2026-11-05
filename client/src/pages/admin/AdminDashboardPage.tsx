@@ -8,8 +8,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getAdminDashboardStats, type AdminDashboardStats } from '@/services/dashboard.service';
 import { LEAD_STATUSES } from '@/types';
 import { STATUS_DOT } from '@/components/leads/LeadStatusBadge';
+import { useAuth } from '@/hooks/useAuth';
 
 export function AdminDashboardPage() {
+  const isAdmin = useAuth().user?.role === 'ADMIN';
   const [stats, setStats] = React.useState<AdminDashboardStats | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -87,16 +89,19 @@ export function AdminDashboardPage() {
               to="/admin/leads"
               className="flex items-center justify-between rounded-xl border border-border/70 p-3.5 text-sm font-bold text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
             >
-              View all leads
+              View all registrations
               <ArrowRight className="h-4 w-4 text-primary" />
             </Link>
+            {isAdmin && (
             <Link
               to="/admin/agents"
               className="flex items-center justify-between rounded-xl border border-border/70 p-3.5 text-sm font-bold text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
             >
-              Manage field agents
+              Manage team
               <ArrowRight className="h-4 w-4 text-primary" />
             </Link>
+            )}
+            {isAdmin && (
             <Link
               to="/admin/audit-logs"
               className="flex items-center justify-between rounded-xl border border-border/70 p-3.5 text-sm font-bold text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
@@ -104,6 +109,7 @@ export function AdminDashboardPage() {
               Review audit trail
               <ArrowRight className="h-4 w-4 text-primary" />
             </Link>
+            )}
           </CardContent>
         </Card>
       </div>

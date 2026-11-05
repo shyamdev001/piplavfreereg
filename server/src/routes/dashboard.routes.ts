@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.get('/stats', requireRole(UserRole.ADMIN), getAdminDashboardStats);
+router.get('/stats', requireRole(UserRole.ADMIN, UserRole.VIEWER), getAdminDashboardStats);
 router.get('/agent-stats', requireRole(UserRole.AGENT), getAgentDashboardStats);
 
 export default router;

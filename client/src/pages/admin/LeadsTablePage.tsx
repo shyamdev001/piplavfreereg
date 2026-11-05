@@ -15,6 +15,7 @@ import { archiveLead, restoreLead } from '@/services/lead.service';
 import { getErrorMessage } from '@/lib/axios';
 import { toast } from 'sonner';
 import { formatDate, initials } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 import type { Agent, Lead } from '@/types';
 import { LEAD_STATUSES } from '@/types';
 
@@ -22,6 +23,7 @@ const ALL = '__all__';
 
 export function LeadsTablePage() {
   const navigate = useNavigate();
+  const isAdmin = useAuth().user?.role === 'ADMIN';
   const [searchParams, setSearchParams] = useSearchParams();
   const [leads, setLeads] = React.useState<Lead[]>([]);
   const [agents, setAgents] = React.useState<Agent[]>([]);
@@ -40,7 +42,7 @@ export function LeadsTablePage() {
   const [showArchived, setShowArchived] = React.useState(false);
 
   React.useEffect(() => {
-    agentService.listAgents().then(setAgents).catch(() => undefined);
+    agentService.listAgents().then((list) => setAgents(list.filter((a) => a.role !== 'VIEWER'))).catch(() => undefined);
   }, []);
 
   const fetchLeads = React.useCallback(() => {
@@ -271,14 +273,16 @@ export function LeadsTablePage() {
                           Open <ArrowUpRight className="h-3.5 w-3.5" />
                         </Link>
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        title={lead.archived ? 'Restore' : 'Archive'}
-                        onClick={() => handleArchiveToggle(lead)}
-                      >
-                        {lead.archived ? <ArchiveRestore className="h-4 w-4" /> : <ArchiveIcon className="h-4 w-4" />}
-                      </Button>
+                      {isAdmin && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title={lead.archived ? 'Restore' : 'Archive'}
+                          onClick={() => handleArchiveToggle(lead)}
+                        >
+                          {lead.archived ? <ArchiveRestore className="h-4 w-4" /> : <ArchiveIcon className="h-4 w-4" />}
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

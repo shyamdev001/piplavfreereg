@@ -36,6 +36,7 @@ const createAgentSchema = z.object({
   email: z.string().trim().email('Enter a valid email'),
   phone: z.string().trim().regex(/^[0-9]{10}$/, 'Enter a valid 10-digit phone number'),
   password: passwordRules,
+  role: z.enum(['AGENT', 'VIEWER']),
 });
 type CreateAgentForm = z.infer<typeof createAgentSchema>;
 
@@ -51,6 +52,8 @@ export function AgentsPage() {
   const [showCreatePassword, setShowCreatePassword] = React.useState(false);
   const [resetTarget, setResetTarget] = React.useState<Agent | null>(null);
   const [showResetPassword, setShowResetPassword] = React.useState(false);
+
+  const fieldAgentCount = agents.filter((a) => a.role !== 'VIEWER').length;
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -70,7 +73,7 @@ export function AgentsPage() {
     handleSubmit: handleCreateSubmit,
     reset: resetCreateForm,
     formState: { errors: createErrors, isSubmitting: isCreating },
-  } = useForm<CreateAgentForm>({ resolver: zodResolver(createAgentSchema) });
+  } = useForm<CreateAgentForm>({ resolver: zodResolver(createAgentSchema), defaultValues: { role: 'AGENT' } });
 
   const {
     register: registerReset,
@@ -82,13 +85,13 @@ export function AgentsPage() {
   const onCreate = async (values: CreateAgentForm) => {
     try {
       const { agent } = await agentService.createAgent(values);
-      toast.success(`Agent ${agent.name} created.`);
+      toast.success(`${agent.role === 'VIEWER' ? 'Viewer' : 'Agent'} ${agent.name} created.`);
       setAddOpen(false);
       resetCreateForm();
       setShowCreatePassword(false);
       load();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Unable to create agent.'));
+      toast.error(getErrorMessage(err, 'Unable to create account.'));
     }
   };
 
@@ -119,9 +122,10 @@ export function AgentsPage() {
     <div className="max-w-6xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[1.75rem] font-extrabold tracking-tight text-foreground">Field Agents</h1>
+          <h1 className="text-[1.75rem] font-extrabold tracking-tight text-foreground">Team</h1>
           <p className="text-sm text-muted-foreground">
-            {agents.length} agent{agents.length === 1 ? '' : 's'}
+            {fieldAgentCount} agent{fieldAgentCount === 1 ? '' : 's'} · {agents.length - fieldAgentCount} viewer
+            {agents.length - fieldAgentCount === 1 ? '' : 's'}
           </p>
         </div>
         <Dialog
@@ -136,15 +140,36 @@ export function AgentsPage() {
         >
           <DialogTrigger asChild>
             <Button>
-              <UserPlus className="h-4 w-4" /> Add Agent
+              <UserPlus className="h-4 w-4" /> Add Member
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Field Agent</DialogTitle>
+              <DialogTitle>Add Team Member</DialogTitle>
               <DialogDescription>Set the password they'll use to log in.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateSubmit(onCreate)} className="space-y-4">
+              <FormField label="Account type" htmlFor="role" required>
+                <div id="role" className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      { value: 'AGENT', title: 'Field Agent', hint: 'Adds and edits registrations' },
+                      { value: 'VIEWER', title: 'Viewer', hint: 'Sees everything, downloads documents, edits nothing' },
+                    ] as const
+                  ).map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex cursor-pointer flex-col gap-0.5 rounded-xl border border-border/70 p-3 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                    >
+                      <span className="flex items-center gap-2 font-bold">
+                        <input type="radio" value={option.value} className="accent-[hsl(var(--primary))]" {...registerCreate('role')} />
+                        {option.title}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{option.hint}</span>
+                    </label>
+                  ))}
+                </div>
+              </FormField>
               <FormField label="Name" htmlFor="name" required error={createErrors.name?.message}>
                 <Input id="name" {...registerCreate('name')} />
               </FormField>
@@ -182,7 +207,7 @@ export function AgentsPage() {
               </FormField>
               <DialogFooter>
                 <Button type="submit" loading={isCreating}>
-                  Create Agent
+                  Create Account
                 </Button>
               </DialogFooter>
             </form>
@@ -199,8 +224,8 @@ export function AgentsPage() {
       ) : agents.length === 0 ? (
         <EmptyState
           icon={<Users className="h-6 w-6" />}
-          title="No agents yet"
-          description="Add your first field agent to start collecting registrations."
+          title="No team members yet"
+          description="Add a field agent to start collecting registrations, or a viewer to share read-only access."
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -217,14 +242,19 @@ export function AgentsPage() {
                       <p className="truncate text-xs text-muted-foreground">{agent.email}</p>
                     </div>
                   </div>
-                  <span
-                    className={cn(
-                      'flex-shrink-0 rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide',
-                      agent.status === 'ACTIVE' ? 'bg-success/12 text-success' : 'bg-destructive/12 text-destructive',
-                    )}
-                  >
-                    {agent.status}
-                  </span>
+                  <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                    <span
+                      className={cn(
+                        'rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide',
+                        agent.status === 'ACTIVE' ? 'bg-success/12 text-success' : 'bg-destructive/12 text-destructive',
+                      )}
+                    >
+                      {agent.status}
+                    </span>
+                    <span className="rounded-full bg-secondary px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">
+                      {agent.role === 'VIEWER' ? 'Viewer' : 'Agent'}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground">
@@ -233,15 +263,21 @@ export function AgentsPage() {
                   <span>Joined {formatDate(agent.createdAt)}</span>
                 </div>
 
+                {agent.role === 'VIEWER' ? (
+                  <p className="rounded-xl bg-secondary/60 px-3.5 py-2.5 text-sm font-medium text-muted-foreground">
+                    Read-only access to all registrations
+                  </p>
+                ) : (
                 <Link
                   to={`/admin/leads?agentId=${agent.id}`}
                   className="flex items-center justify-between rounded-xl bg-primary/[0.06] px-3.5 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/10"
                 >
                   <span className="font-mono-brand tabular-nums">
-                    {agent.totalLeads} lead{agent.totalLeads === 1 ? '' : 's'} collected
+                    {agent.totalLeads} registration{agent.totalLeads === 1 ? '' : 's'} collected
                   </span>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
+                )}
 
                 <div className="flex flex-wrap gap-2 border-t border-border/70 pt-3.5">
                   <Button

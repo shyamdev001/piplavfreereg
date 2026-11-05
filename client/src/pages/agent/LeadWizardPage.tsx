@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
@@ -38,6 +38,9 @@ const slideVariants = {
 export function LeadWizardPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  // The same wizard serves agents (/agent/leads/...) and admins (/admin/leads/:id/edit).
+  const isAdminEdit = useLocation().pathname.startsWith('/admin/');
+  const listPath = isAdminEdit ? '/admin/leads' : '/agent/leads';
 
   const [lead, setLead] = React.useState<Lead | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -72,7 +75,7 @@ export function LeadWizardPage() {
           setLead(cached as Lead);
         } else {
           toast.error(getErrorMessage(err, 'Unable to load this registration.'));
-          navigate('/agent/leads');
+          navigate(listPath);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -134,12 +137,21 @@ export function LeadWizardPage() {
     setCachedDraft(updated._id, updated);
   };
 
+  // Already submitted registrations are being edited: finishing the wizard saves, it doesn't "submit" again.
+  const isEditingSubmitted = Boolean(lead && !lead.isDraft);
+  const exitPath = lead && (isAdminEdit || isEditingSubmitted) ? `${listPath}/${lead._id}` : listPath;
+
   const handleSubmit = async () => {
     if (!lead) return;
     setSubmitting(true);
     try {
       await leadService.submitLead(lead._id);
       clearCachedDraft(lead._id);
+      if (isEditingSubmitted) {
+        toast.success(`Changes to ${lead.leadId} saved.`);
+        navigate(exitPath);
+        return;
+      }
       toast.success(`Registration ${lead.leadId} submitted successfully.`);
       confetti({
         particleCount: 90,
@@ -148,7 +160,7 @@ export function LeadWizardPage() {
         colors: ['#d2691e', '#efa02a', '#4f9a00', '#0080d0'],
         disableForReducedMotion: true,
       });
-      setTimeout(() => navigate('/agent/leads'), 900);
+      setTimeout(() => navigate(exitPath), 900);
     } catch (err) {
       toast.error(getErrorMessage(err, 'Some required information is missing. Please review and try again.'));
       setSubmitting(false);
@@ -168,14 +180,16 @@ export function LeadWizardPage() {
       <div className="flex items-center justify-between gap-3 border-b border-border/70 bg-card px-4 py-3">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/agent/leads')}
+            onClick={() => navigate(exitPath)}
             className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
             <p className="font-mono-brand text-sm font-bold tracking-tight text-foreground">{lead.leadId}</p>
-            <p className="text-[0.7rem] text-muted-foreground">Piplav solar registration</p>
+            <p className="text-[0.7rem] text-muted-foreground">
+              {isEditingSubmitted ? 'Editing registration' : 'Piplav solar registration'}
+            </p>
           </div>
         </div>
         <span
@@ -280,6 +294,7 @@ export function LeadWizardPage() {
                 onBack={() => goToStep(5)}
                 onSubmit={handleSubmit}
                 submitting={submitting}
+                submitLabel={isEditingSubmitted ? 'Save Changes' : 'Submit Registration'}
               />
             )}
           </motion.div>

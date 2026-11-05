@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Pencil } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { LeadDetailView } from '@/components/leads/LeadDetailView';
 import * as leadService from '@/services/lead.service';
 import { getErrorMessage } from '@/lib/axios';
@@ -43,7 +44,15 @@ export function AgentLeadDetailPage() {
       >
         <ArrowLeft className="h-4 w-4" /> Back to My Registrations
       </button>
-      <LeadDetailView lead={lead} canDownloadDocuments={false} />
+      <LeadDetailView
+        lead={lead}
+        canDownloadDocuments={false}
+        headerActions={
+          <Button variant="outline" onClick={() => navigate(`/agent/leads/${lead._id}/edit`)}>
+            <Pencil className="h-4 w-4" /> Edit
+          </Button>
+        }
+      />
     </div>
   );
 }

@@ -20,9 +20,11 @@ import {
 
 const router = Router();
 
-router.use(requireAuth, requireRole(UserRole.ADMIN));
+router.use(requireAuth);
 
-router.get('/', listAgents);
+// Viewers read the list only (for the "agent" filter on the registrations table).
+router.get('/', requireRole(UserRole.ADMIN, UserRole.VIEWER), listAgents);
+router.use(requireRole(UserRole.ADMIN));
 router.post('/', validate({ body: createAgentSchema }), createAgent);
 router.get('/:id', getAgent);
 router.patch('/:id', validate({ body: updateAgentSchema }), updateAgent);

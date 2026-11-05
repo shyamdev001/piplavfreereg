@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import type { UserRole } from '@/types';
+import { homePathFor, type UserRole } from '@/types';
 import { Loader2 } from 'lucide-react';
 
 export function ProtectedRoute({ allowedRoles }: { allowedRoles: UserRole[] }) {
@@ -17,7 +17,7 @@ export function ProtectedRoute({ allowedRoles }: { allowedRoles: UserRole[] }) {
   if (!user) return <Navigate to="/login" replace />;
 
   if (!allowedRoles.includes(user.role)) {
-    return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/agent'} replace />;
+    return <Navigate to={homePathFor(user.role)} replace />;
   }
 
   return <Outlet />;

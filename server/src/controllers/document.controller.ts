@@ -17,7 +17,7 @@ import {
 } from '../services/cloudinary.service';
 import { buildDocumentBaseName, documentLabel } from '../utils/documentNaming';
 import { recordAudit } from '../services/audit.service';
-import { AuditAction, DocumentStatus, DocumentType, PdfStatus, UserRole } from '../types/enums';
+import { AuditAction, DocumentStatus, DocumentType, PdfStatus } from '../types/enums';
 import { env } from '../config/env';
 
 const PDF_MIME = 'application/pdf';
@@ -356,9 +356,6 @@ export const getDocumentAccess = catchAsync(async (req: Request, res: Response) 
 export const renameDocument = catchAsync(async (req: Request, res: Response) => {
   const { lead, doc } = await loadLeadByDocumentOrThrow(req.params.documentId);
   if (!canAccessLead(lead, req.user!)) throw ApiError.forbidden("You don't have permission to access this document.");
-  if (!lead.isDraft && req.user!.role !== UserRole.ADMIN) {
-    throw ApiError.forbidden('Documents on a submitted lead can only be changed by an admin.');
-  }
   if (doc.documentType !== DocumentType.OTHER) throw ApiError.badRequest('Only Other Documents can be renamed.');
 
   const customName = parseCustomName(req.body.customName);
@@ -411,9 +408,6 @@ export const regeneratePdf = catchAsync(async (req: Request, res: Response) => {
 export const removePage = catchAsync(async (req: Request, res: Response) => {
   const { lead, doc } = await loadLeadByDocumentOrThrow(req.params.documentId);
   if (!canAccessLead(lead, req.user!)) throw ApiError.forbidden("You don't have permission to access this document.");
-  if (!lead.isDraft && req.user!.role !== UserRole.ADMIN) {
-    throw ApiError.forbidden('Documents on a submitted lead can only be changed by an admin.');
-  }
 
   const page = doc.pages.id(req.params.pageId);
   if (!page) throw ApiError.notFound('Page not found.');
@@ -468,9 +462,6 @@ export const removePage = catchAsync(async (req: Request, res: Response) => {
 export const reorderPages = catchAsync(async (req: Request, res: Response) => {
   const { lead, doc } = await loadLeadByDocumentOrThrow(req.params.documentId);
   if (!canAccessLead(lead, req.user!)) throw ApiError.forbidden("You don't have permission to access this document.");
-  if (!lead.isDraft && req.user!.role !== UserRole.ADMIN) {
-    throw ApiError.forbidden('Documents on a submitted lead can only be changed by an admin.');
-  }
 
   const pageIds = req.body.pageIds;
   if (!Array.isArray(pageIds) || pageIds.length !== doc.pages.length) {
@@ -506,9 +497,6 @@ export const reorderPages = catchAsync(async (req: Request, res: Response) => {
 export const deleteDocument = catchAsync(async (req: Request, res: Response) => {
   const { lead, doc } = await loadLeadByDocumentOrThrow(req.params.documentId);
   if (!canAccessLead(lead, req.user!)) throw ApiError.forbidden("You don't have permission to access this document.");
-  if (!lead.isDraft && req.user!.role !== UserRole.ADMIN) {
-    throw ApiError.forbidden('Documents on a submitted lead can only be removed by an admin.');
-  }
 
   await deleteDocumentGroupAssets(doc);
 

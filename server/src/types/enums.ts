@@ -1,6 +1,8 @@
 export const UserRole = {
   ADMIN: 'ADMIN',
   AGENT: 'AGENT',
+  /** Read-only: sees every registration and can view/download documents, but changes nothing. */
+  VIEWER: 'VIEWER',
 } as const;
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 

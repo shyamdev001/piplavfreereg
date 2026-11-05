@@ -1,4 +1,9 @@
-export type UserRole = 'ADMIN' | 'AGENT';
+export type UserRole = 'ADMIN' | 'AGENT' | 'VIEWER';
+
+/** Where each role lands after login: viewers share the (read-only) admin screens. */
+export function homePathFor(role: UserRole): string {
+  return role === 'AGENT' ? '/agent' : '/admin';
+}
 export type UserStatus = 'ACTIVE' | 'DISABLED';
 export type CustomerType = 'Residential' | 'Commercial';
 export type LeadStatus =
@@ -45,6 +50,7 @@ export interface Agent {
   name: string;
   email: string;
   phone: string;
+  role: 'AGENT' | 'VIEWER';
   status: UserStatus;
   createdAt: string;
   totalLeads: number;

@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, Loader2, Archive, ArchiveRestore } from 'lucide-react';
+import { ArrowLeft, Loader2, Archive, ArchiveRestore, Pencil } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { LeadDetailView } from '@/components/leads/LeadDetailView';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -13,6 +14,7 @@ import { LEAD_STATUSES } from '@/types';
 export function AdminLeadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isAdmin = useAuth().user?.role === 'ADMIN';
   const [lead, setLead] = React.useState<Lead | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [updatingStatus, setUpdatingStatus] = React.useState(false);
@@ -81,7 +83,11 @@ export function AdminLeadDetailPage() {
         lead={lead}
         canDownloadDocuments
         headerActions={
-          <div className="flex items-center gap-2">
+          isAdmin ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => navigate(`/admin/leads/${lead._id}/edit`)}>
+              <Pencil className="h-4 w-4" /> Edit
+            </Button>
             <Select value={lead.status} onValueChange={handleStatusChange} disabled={updatingStatus}>
               <SelectTrigger className="w-44">
                 <SelectValue />
@@ -99,6 +105,7 @@ export function AdminLeadDetailPage() {
               {lead.archived ? 'Restore' : 'Archive'}
             </Button>
           </div>
+          ) : undefined
         }
       />
     </div>

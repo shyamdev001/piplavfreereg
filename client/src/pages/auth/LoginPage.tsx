@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { homePathFor } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
@@ -33,7 +34,7 @@ export function LoginPage() {
 
   React.useEffect(() => {
     if (!isLoading && user) {
-      navigate(user.role === 'ADMIN' ? '/admin' : '/agent', { replace: true });
+      navigate(homePathFor(user.role), { replace: true });
     }
   }, [user, isLoading, navigate]);
 
@@ -41,7 +42,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       const loggedInUser = await login(values.email, values.password);
-      navigate(loggedInUser.role === 'ADMIN' ? '/admin' : '/agent', { replace: true });
+      navigate(homePathFor(loggedInUser.role), { replace: true });
     } catch (err) {
       toast.error(getErrorMessage(err, 'Invalid email or password'));
     } finally {

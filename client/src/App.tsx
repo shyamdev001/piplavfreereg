@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AgentLayout } from '@/layouts/AgentLayout';
 import { useAuth } from '@/hooks/useAuth';
+import { homePathFor } from '@/types';
 
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { AgentDashboardPage } from '@/pages/agent/AgentDashboardPage';
@@ -42,7 +43,7 @@ function RootRedirect() {
   const { user, isLoading } = useAuth();
   if (isLoading) return null;
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/agent'} replace />;
+  return <Navigate to={homePathFor(user.role)} replace />;
 }
 
 export default function App() {
@@ -63,14 +64,21 @@ export default function App() {
           <Route path="/agent/leads/:id/edit" element={<LeadWizardPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+        {/* Viewers get the admin screens read-only: the pages hide every action they can't take. */}
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'VIEWER']} />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/leads" element={<LeadsTablePage />} />
             <Route path="/admin/leads/:id" element={<AdminLeadDetailPage />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+          <Route element={<AdminLayout />}>
             <Route path="/admin/agents" element={<AgentsPage />} />
             <Route path="/admin/audit-logs" element={<AuditLogPage />} />
           </Route>
+          <Route path="/admin/leads/:id/edit" element={<LeadWizardPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

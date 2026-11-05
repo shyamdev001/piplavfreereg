@@ -79,6 +79,6 @@ export async function findDuplicateLeadsByMobile(mobileNumber: string, excludeLe
 }
 
 export function canAccessLead(lead: Pick<ILead, 'createdBy'>, requester: Requester): boolean {
-  if (requester.role === UserRole.ADMIN) return true;
+  if (requester.role === UserRole.ADMIN || requester.role === UserRole.VIEWER) return true;
   return lead.createdBy.toString() === requester.id;
 }

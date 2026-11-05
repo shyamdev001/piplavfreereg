@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UserStatus } from '../types/enums';
+import { UserRole, UserStatus } from '../types/enums';
 
 export const createAgentSchema = z.object({
   name: z.string().trim().min(2, 'Name is required').max(120),
@@ -10,6 +10,7 @@ export const createAgentSchema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Password must contain an uppercase letter')
     .regex(/[0-9]/, 'Password must contain a number'),
+  role: z.enum([UserRole.AGENT, UserRole.VIEWER]).default(UserRole.AGENT),
 });
 
 export const updateAgentSchema = z.object({

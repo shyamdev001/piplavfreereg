@@ -7,7 +7,7 @@ import { generateLeadId } from '../utils/generateLeadId';
 import { buildLeadFilterQuery, canAccessLead, findDuplicateLeadsByMobile } from '../services/lead.service';
 import { deleteDocumentGroupAssets } from '../services/cloudinary.service';
 import { recordAudit } from '../services/audit.service';
-import { AuditAction, LeadStatus, UserRole } from '../types/enums';
+import { AuditAction, LeadStatus } from '../types/enums';
 import { submitLeadSchema } from '../validators/lead.validators';
 
 async function loadLeadOrThrow(id: string) {
@@ -33,10 +33,8 @@ export const createDraftLead = catchAsync(async (req: Request, res: Response) =>
 export const updateLead = catchAsync(async (req: Request, res: Response) => {
   const lead = await loadLeadOrThrow(req.params.id);
 
+  // Agents can keep editing their own registrations after submission; admins can edit any.
   if (!canAccessLead(lead, req.user!)) throw ApiError.forbidden("You don't have permission to access this lead.");
-  if (!lead.isDraft && req.user!.role !== UserRole.ADMIN) {
-    throw ApiError.forbidden('This lead has already been submitted and can no longer be edited by field agents.');
-  }
 
   const allowedSections = ['customerBasicDetails', 'customerAddress', 'solarInformation', 'electricityDetails', 'notes'];
   for (const section of allowedSections) {
@@ -82,11 +80,13 @@ export const submitLead = catchAsync(async (req: Request, res: Response) => {
     );
   }
 
+  // Re-submitting an already submitted registration (after editing it) is an update, not a new registration.
+  const wasDraft = lead.isDraft;
   lead.isDraft = false;
   await lead.save();
 
   await recordAudit({
-    action: AuditAction.LEAD_CREATED,
+    action: wasDraft ? AuditAction.LEAD_CREATED : AuditAction.LEAD_UPDATED,
     actor: { id: req.user!.id, name: req.user!.name, role: req.user!.role },
     targetType: 'Lead',
     targetId: lead._id.toString(),

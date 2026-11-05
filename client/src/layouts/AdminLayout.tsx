@@ -6,10 +6,10 @@ import { cn, initials } from '@/lib/utils';
 import { Logo } from '@/components/brand/Logo';
 
 const NAV_ITEMS = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/admin/leads', label: 'Registrations', icon: ClipboardList },
-  { to: '/admin/agents', label: 'Agents', icon: Users },
-  { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true, adminOnly: false },
+  { to: '/admin/leads', label: 'Registrations', icon: ClipboardList, adminOnly: false },
+  { to: '/admin/agents', label: 'Team', icon: Users, adminOnly: true },
+  { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText, adminOnly: true },
 ];
 
 export function AdminLayout() {
@@ -22,7 +22,7 @@ export function AdminLayout() {
         <Logo size={38} variant="lockup" />
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-3">
-        {NAV_ITEMS.map((item) => (
+        {NAV_ITEMS.filter((item) => !item.adminOnly || user?.role === 'ADMIN').map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -49,7 +49,9 @@ export function AdminLayout() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">{user?.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {user?.role === 'VIEWER' ? 'Viewer (read-only)' : user?.email}
+            </p>
           </div>
           <button
             onClick={() => logout()}

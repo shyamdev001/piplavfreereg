@@ -38,12 +38,14 @@ export function ReviewStep({
   onBack,
   onSubmit,
   submitting,
+  submitLabel = 'Submit Registration',
 }: {
   lead: Lead;
   onEditStep: (stepIndex: number) => void;
   onBack: () => void;
   onSubmit: () => void;
   submitting: boolean;
+  submitLabel?: string;
 }) {
   const basicComplete = Boolean(lead.customerBasicDetails?.fullName && lead.customerBasicDetails?.mobileNumber && lead.customerBasicDetails?.customerType);
   const addressComplete = Boolean(
@@ -123,7 +125,7 @@ export function ReviewStep({
           Back
         </Button>
         <Button type="button" size="lg" className="flex-1" onClick={onSubmit} loading={submitting} disabled={!canSubmit}>
-          {!submitting && 'Submit Registration'}
+          {!submitting && submitLabel}
         </Button>
       </div>
     </div>
