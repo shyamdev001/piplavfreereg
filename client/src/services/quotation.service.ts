@@ -39,7 +39,8 @@ export interface Quotation {
   village?: QuotationVillage;
   category: QuotationCategory;
   basePrice?: number;
-  extras?: Array<{ name: string; description?: string; price: number }>;
+  systemPrice?: number;
+  extras?: Array<{ name: string; description?: string; price: number; includedInPrice?: boolean }>;
   amount: number;
   systemSizeKw: number;
   quotationDate: string;
@@ -54,10 +55,14 @@ export interface CreateQuotationInput {
   mobileNumber: string;
   village: QuotationVillage;
   category: QuotationCategory;
-  extraIds: string[];
+  /** Ticked add-ons with the amount for this customer. */
+  extras: Array<{ id: string; price: number }>;
 }
 
-/** Optional add-on (Insurance, WiFi dongle, ...) that admins price and quotations can include. */
+/**
+ * Optional add-on (e.g. a policy). `price` is only the default amount: it is typed per quotation
+ * and taken out of the panels + inverter price, so the total stays fixed.
+ */
 export interface QuotationExtra {
   _id: string;
   name: string;
@@ -66,7 +71,10 @@ export interface QuotationExtra {
   active: boolean;
 }
 
-export type QuotationExtraInput = Pick<QuotationExtra, 'name' | 'price'> & { description?: string; active?: boolean };
+export type QuotationExtraInput = Pick<QuotationExtra, 'name' | 'price'> & {
+  description?: string;
+  active?: boolean;
+};
 
 /** Admins get every add-on; other roles only the active ones. */
 export async function listExtras(): Promise<QuotationExtra[]> {

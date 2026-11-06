@@ -26,7 +26,7 @@ function toInput(draft: Draft): QuotationExtraInput | string {
   const price = Number(draft.price);
   if (name.length < 2) return 'Enter the add-on name.';
   if (!englishOnly.test(name) || !englishOnly.test(description)) return 'Please type in English letters.';
-  if (draft.price.trim() === '' || !Number.isInteger(price) || price < 0) return 'Enter the price in whole rupees.';
+  if (!Number.isInteger(price) || price < 0) return 'Enter the amount in whole rupees.';
   return { name, description: description || undefined, price };
 }
 
@@ -36,15 +36,15 @@ function DraftFields({ draft, onChange }: { draft: Draft; onChange: (d: Draft) =
       <Input
         value={draft.name}
         onChange={(e) => onChange({ ...draft, name: e.target.value })}
-        placeholder="Name, e.g. Insurance"
+        placeholder="Name, e.g. Policy"
         aria-label="Add-on name"
       />
       <Input
         value={draft.price}
         onChange={(e) => onChange({ ...draft, price: e.target.value.replace(/[^0-9]/g, '') })}
         inputMode="numeric"
-        placeholder="Price ₹"
-        aria-label="Add-on price"
+        placeholder="Default ₹"
+        aria-label="Add-on default amount"
       />
       <Input
         value={draft.description}
@@ -58,8 +58,9 @@ function DraftFields({ draft, onChange }: { draft: Draft; onChange: (d: Draft) =
 }
 
 /**
- * Admin-only list of optional add-ons (Insurance, WiFi dongle, ...). Prices
- * set here are used for new quotations; saved quotations keep their own copy.
+ * Admin-only list of optional add-ons (e.g. a policy). A ticked add-on is
+ * taken out of the panels + inverter price, so the total never changes.
+ * Saved quotations keep their own copy of the prices.
  */
 export function AddOnsManager({ extras, onChanged }: { extras: QuotationExtra[]; onChanged: () => void }) {
   const [draft, setDraft] = React.useState<Draft>(emptyDraft);
@@ -94,7 +95,11 @@ export function AddOnsManager({ extras, onChanged }: { extras: QuotationExtra[];
 
   const startEdit = (extra: QuotationExtra) => {
     setEditingId(extra._id);
-    setEditDraft({ name: extra.name, description: extra.description ?? '', price: String(extra.price) });
+    setEditDraft({
+      name: extra.name,
+      description: extra.description ?? '',
+      price: String(extra.price),
+    });
   };
 
   const saveEdit = async (extra: QuotationExtra) => {
@@ -125,7 +130,9 @@ export function AddOnsManager({ extras, onChanged }: { extras: QuotationExtra[];
         <div>
           <h2 className="text-base font-extrabold text-foreground">Add-ons</h2>
           <p className="text-xs text-muted-foreground">
-            Optional items like Insurance or WiFi dongle. Ticked add-ons are added to the total and printed on the PDF.
+            Optional items like a policy. The amount here is only the default and can be changed on each quotation
+            (leave it empty to type it every time). The total stays the same: the add-on amount is taken out of the
+            panels + inverter price.
           </p>
         </div>
 
@@ -152,7 +159,7 @@ export function AddOnsManager({ extras, onChanged }: { extras: QuotationExtra[];
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-foreground">{extra.name}</p>
                     <p className="font-mono-brand text-xs tabular-nums text-muted-foreground">
-                      {formatCurrency(extra.price)}
+                      {extra.price > 0 ? `Default ${formatCurrency(extra.price)}` : 'Amount typed on each quotation'}
                       {!extra.active && ' · hidden'}
                     </p>
                   </div>

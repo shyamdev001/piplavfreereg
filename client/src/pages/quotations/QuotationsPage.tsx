@@ -40,16 +40,22 @@ const quotationSchema = z.object({
 type QuotationForm = z.infer<typeof quotationSchema>;
 
 function NewQuotationCard({ extras, onCreated }: { extras: QuotationExtra[]; onCreated: () => void }) {
-  const [extraIds, setExtraIds] = React.useState<string[]>([]);
+  /** Ticked add-ons -> amount typed for this customer (starts at the add-on's default). */
+  const [picked, setPicked] = React.useState<Record<string, string>>({});
   const offered = React.useMemo(() => extras.filter((e) => e.active), [extras]);
 
   // Drop ticks for add-ons the admin has just removed or switched off.
   React.useEffect(() => {
-    setExtraIds((ids) => ids.filter((id) => offered.some((e) => e._id === id)));
+    setPicked((current) => Object.fromEntries(Object.entries(current).filter(([id]) => offered.some((e) => e._id === id))));
   }, [offered]);
 
-  const toggleExtra = (id: string) =>
-    setExtraIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  const toggleExtra = (extra: QuotationExtra) =>
+    setPicked((current) => {
+      const next = { ...current };
+      if (extra._id in next) delete next[extra._id];
+      else next[extra._id] = extra.price > 0 ? String(extra.price) : '';
+      return next;
+    });
 
   const {
     register,
@@ -66,8 +72,12 @@ function NewQuotationCard({ extras, onCreated }: { extras: QuotationExtra[]; onC
   const category = watch('category');
   const categoryOptions = QUOTATION_CATEGORY_OPTIONS[village];
   const basePrice = categoryOptions.find((o) => o.value === category)?.amount ?? 0;
-  const extrasTotal = offered.filter((e) => extraIds.includes(e._id)).reduce((sum, e) => sum + e.price, 0);
-  const amount = basePrice + extrasTotal;
+  const ticked = offered
+    .filter((e) => e._id in picked)
+    .map((e) => ({ ...e, amount: Number(picked[e._id] || 0) }));
+  // The package price is the fixed total; ticked add-ons are carved out of the panels + inverter row.
+  const systemPrice = basePrice - ticked.reduce((sum, e) => sum + e.amount, 0);
+  const amount = basePrice;
 
   // Each village has its own categories; fall back to General when the old choice isn't offered.
   React.useEffect(() => {
@@ -75,12 +85,24 @@ function NewQuotationCard({ extras, onCreated }: { extras: QuotationExtra[]; onC
   }, [categoryOptions, category, setValue]);
 
   const onSubmit = async (values: QuotationForm) => {
+    const missing = ticked.find((e) => e.amount <= 0);
+    if (missing) {
+      toast.error(`Enter the ${missing.name} amount.`);
+      return;
+    }
+    if (systemPrice <= 0) {
+      toast.error('Add-ons cost more than the package price.');
+      return;
+    }
     try {
-      const quotation = await quotationService.createQuotation({ ...values, extraIds });
+      const quotation = await quotationService.createQuotation({
+        ...values,
+        extras: ticked.map((e) => ({ id: e._id, price: e.amount })),
+      });
       quotationService.downloadQuotationPdf(quotation._id);
       toast.success(`Quotation ${quotation.quotationNumber} created. Downloading PDF...`);
       reset({ customerName: '', address: '', mobileNumber: '', village: values.village, category: values.category });
-      setExtraIds([]);
+      setPicked({});
       onCreated();
     } catch (err) {
       toast.error(getErrorMessage(err, 'Unable to create the quotation.'));
@@ -143,31 +165,74 @@ function NewQuotationCard({ extras, onCreated }: { extras: QuotationExtra[]; onC
           {offered.length > 0 && (
             <FormField label="Add-ons (optional)" htmlFor="extras">
               <div id="extras" className="space-y-2">
-                {offered.map((extra) => (
-                  <label
-                    key={extra._id}
-                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-border/70 p-3 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={extraIds.includes(extra._id)}
-                      onChange={() => toggleExtra(extra._id)}
-                      className="h-4 w-4 accent-[hsl(var(--primary))]"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-bold">{extra.name}</span>
-                      {extra.description && <span className="block text-xs text-muted-foreground">{extra.description}</span>}
-                    </span>
-                    <span className="font-mono-brand text-xs tabular-nums text-muted-foreground">+{formatCurrency(extra.price)}</span>
-                  </label>
-                ))}
+                {offered.map((extra) => {
+                  const isPicked = extra._id in picked;
+                  return (
+                    <div
+                      key={extra._id}
+                      className={cn(
+                        'rounded-xl border border-border/70 text-sm transition-colors',
+                        isPicked && 'border-primary bg-primary/5',
+                      )}
+                    >
+                      <label className="flex cursor-pointer items-center gap-3 p-3">
+                        <input
+                          type="checkbox"
+                          checked={isPicked}
+                          onChange={() => toggleExtra(extra)}
+                          className="h-4 w-4 accent-[hsl(var(--primary))]"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-bold">{extra.name}</span>
+                          {extra.description && <span className="block text-xs text-muted-foreground">{extra.description}</span>}
+                        </span>
+                      </label>
+                      {isPicked && (
+                        <div className="flex items-center gap-2 px-3 pb-3">
+                          <label htmlFor={`extra-${extra._id}`} className="flex-1 text-xs font-semibold text-muted-foreground">
+                            {extra.name} amount (₹)
+                          </label>
+                          <Input
+                            id={`extra-${extra._id}`}
+                            inputMode="numeric"
+                            value={picked[extra._id]}
+                            onChange={(e) =>
+                              setPicked((current) => ({ ...current, [extra._id]: e.target.value.replace(/[^0-9]/g, '') }))
+                            }
+                            placeholder="Amount"
+                            className="h-9 w-32 text-right font-mono-brand tabular-nums"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </FormField>
           )}
 
-          <div className="flex items-center justify-between rounded-xl border border-border/70 px-4 py-3">
-            <span className="text-sm font-bold text-muted-foreground">Quotation total</span>
-            <span className="font-mono-brand text-lg font-extrabold tabular-nums text-primary">{formatCurrency(amount)}</span>
+          <div className="space-y-1.5 rounded-xl border border-border/70 px-4 py-3">
+            {ticked.length > 0 && (
+              <div className="space-y-1 border-b border-border/60 pb-2 font-mono-brand text-xs tabular-nums text-muted-foreground">
+                <p className="flex justify-between gap-3">
+                  <span className="font-sans">Panels + inverter</span>
+                  {formatCurrency(systemPrice)}
+                </p>
+                {ticked.map((e) => (
+                  <p key={e._id} className="flex justify-between gap-3">
+                    <span className="truncate font-sans">{e.name}</span>
+                    {formatCurrency(e.amount)}
+                  </p>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-muted-foreground">Quotation total</span>
+              <span className="font-mono-brand text-lg font-extrabold tabular-nums text-primary">{formatCurrency(amount)}</span>
+            </div>
+            {systemPrice <= 0 && (
+              <p className="text-xs font-semibold text-destructive">Add-ons cost more than the package price.</p>
+            )}
           </div>
 
           <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>

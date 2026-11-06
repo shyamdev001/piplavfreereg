@@ -101,28 +101,64 @@ describe('Quotations', () => {
     expect((await request(app).get('/api/quotations/extras').set('Cookie', adminCookie)).body.extras).toHaveLength(3);
 
     const ids = [insurance.body.extra._id, dongle.body.extra._id];
-    const q = await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL', extraIds: ids });
+    const q = await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL', extras: [{ id: ids[0], price: 1500 }, { id: ids[1], price: 2000 }] });
     expect(q.status).toBe(201);
     expect(q.body.quotation.basePrice).toBe(97290);
-    expect(q.body.quotation.amount).toBe(97290 + 1500 + 2000);
+    expect(q.body.quotation.systemPrice).toBe(97290 - 1500 - 2000);
+    expect(q.body.quotation.amount).toBe(97290); // the package total never changes
     expect(q.body.quotation.extras).toEqual([
-      { name: 'Insurance', description: '5 years', price: 1500 },
-      { name: 'WiFi Dongle', price: 2000 },
+      { name: 'Insurance', description: '5 years', price: 1500, includedInPrice: true },
+      { name: 'WiFi Dongle', price: 2000, includedInPrice: true },
     ]);
 
     // Inactive or unknown add-ons are refused.
-    expect((await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL', extraIds: [retired.body.extra._id] })).status).toBe(400);
-    expect((await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL', extraIds: ['507f1f77bcf86cd799439011'] })).status).toBe(400);
+    expect((await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL', extras: [{ id: retired.body.extra._id, price: 99 }] })).status).toBe(400);
+    expect((await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL', extras: [{ id: '507f1f77bcf86cd799439011', price: 10 }] })).status).toBe(400);
 
     // Changing or deleting an add-on later leaves the saved quotation alone.
     await request(app).patch(`/api/quotations/extras/${insurance.body.extra._id}`).set('Cookie', adminCookie).send({ price: 9999 });
     await request(app).delete(`/api/quotations/extras/${dongle.body.extra._id}`).set('Cookie', adminCookie);
     const list = await request(app).get('/api/quotations').set('Cookie', cookie);
-    expect(list.body.quotations[0].amount).toBe(100790);
+    expect(list.body.quotations[0].systemPrice).toBe(93790);
 
     const pdf = await request(app).get(`/api/quotations/${q.body.quotation._id}/pdf`).set('Cookie', cookie).buffer(true);
     expect(pdf.status).toBe(200);
     expect((await request(app).patch('/api/quotations/extras/not-an-id').set('Cookie', adminCookie).send({ price: 1 })).status).toBe(400);
+  });
+
+  it('keeps the package total fixed: the typed policy amount comes out of panels + inverter', async () => {
+    const { user: admin } = await createUser({ role: UserRole.ADMIN });
+    const { user: quoter } = await createUser({ role: UserRole.QUOTATION });
+    const add = (body: object) => request(app).post('/api/quotations/extras').set('Cookie', authCookieFor(admin)).send(body);
+    const policy = await add({ name: 'Policy', price: 700 });
+    const huge = await add({ name: 'Huge', price: 200000 });
+
+    const cookie = authCookieFor(quoter);
+    const q = await request(app)
+      .post('/api/quotations')
+      .set('Cookie', cookie)
+      .send({ ...customer, village: 'OTHER', category: 'GENERAL', extras: [{ id: policy.body.extra._id, price: 700 }] });
+    expect(q.status).toBe(201);
+    expect(q.body.quotation.systemPrice).toBe(110000);
+    expect(q.body.quotation.extras[0].price).toBe(700);
+    expect(q.body.quotation.amount).toBe(110700);
+
+    // The policy amount differs per customer: whatever is typed is used, total still fixed.
+    const q2 = await request(app)
+      .post('/api/quotations')
+      .set('Cookie', cookie)
+      .send({ ...customer, village: 'OTHER', category: 'GENERAL', extras: [{ id: policy.body.extra._id, price: 1250 }] });
+    expect(q2.body.quotation.extras[0].price).toBe(1250);
+    expect(q2.body.quotation.systemPrice).toBe(110700 - 1250);
+    expect(q2.body.quotation.amount).toBe(110700);
+    const zero = await request(app)
+      .post('/api/quotations')
+      .set('Cookie', cookie)
+      .send({ ...customer, category: 'GENERAL', extras: [{ id: policy.body.extra._id, price: 0 }] });
+    expect(zero.status).toBe(400);
+
+    const tooMuch = await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL', extras: [{ id: huge.body.extra._id, price: 200000 }] });
+    expect(tooMuch.status).toBe(400);
   });
 
   it('blocks quotation users from registrations, documents and agents', async () => {

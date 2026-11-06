@@ -34,27 +34,32 @@ async function findAccessible(req: Request) {
 }
 
 export const createQuotation = catchAsync(async (req: Request, res: Response) => {
-  const { customerName, address, mobileNumber, village, category, extraIds } = req.body as {
+  const { customerName, address, mobileNumber, village, category, extras: picked } = req.body as {
     customerName: string;
     address: string;
     mobileNumber: string;
     village: QuotationVillage;
     category: QuotationCategory;
-    extraIds: string[];
+    extras: Array<{ id: string; price: number }>;
   };
   const basePrice = quotationPrice(village, category);
   if (basePrice === undefined) throw ApiError.badRequest('This category is not available for the selected village');
 
-  // Prices come from the add-on list, never from the client.
-  const uniqueIds = [...new Set(extraIds)];
+  // Name and description come from the add-on list; the amount is typed per quotation.
+  const uniqueIds = [...new Set(picked.map((p) => p.id))];
+  if (uniqueIds.length !== picked.length) throw ApiError.badRequest('An add-on was selected twice');
   const found = uniqueIds.length ? await QuotationExtra.find({ _id: { $in: uniqueIds }, active: true }).lean() : [];
   if (found.length !== uniqueIds.length) throw ApiError.badRequest('One of the selected add-ons is no longer available');
   const byId = new Map(found.map((e) => [String(e._id), e]));
-  const extras = uniqueIds.map((id) => {
-    const e = byId.get(id)!;
-    return { name: e.name, description: e.description, price: e.price };
+  const extras = picked.map((p) => {
+    const e = byId.get(p.id)!;
+    return { name: e.name, description: e.description, price: p.price, includedInPrice: true };
   });
-  const amount = basePrice + extras.reduce((sum, e) => sum + e.price, 0);
+  // The package price is the fixed total: add-ons (e.g. a policy) are carved out of it,
+  // so the panels + inverter row shrinks and the total stays the same.
+  const systemPrice = basePrice - extras.reduce((sum, e) => sum + e.price, 0);
+  if (systemPrice <= 0) throw ApiError.badRequest('Add-ons cost more than the package price');
+  const amount = basePrice;
   const now = new Date();
   const quotation = await Quotation.create({
     quotationNumber: await nextQuotationNumber(now),
@@ -64,6 +69,7 @@ export const createQuotation = catchAsync(async (req: Request, res: Response) =>
     village,
     category,
     basePrice,
+    systemPrice,
     extras,
     amount,
     systemSizeKw: QUOTATION_SYSTEM.sizeKw,

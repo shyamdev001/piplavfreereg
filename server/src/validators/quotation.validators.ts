@@ -19,7 +19,11 @@ export const createQuotationSchema = z.object({
   mobileNumber: z.string().trim().regex(/^[0-9]{10}$/, 'Mobile must be a 10-digit number'),
   village: z.nativeEnum(QuotationVillage).default(QuotationVillage.PIPLAV),
   category: z.nativeEnum(QuotationCategory),
-  extraIds: z.array(objectId).max(20).default([]),
+  // Ticked add-ons with this customer's amount (e.g. the policy amount varies per customer).
+  extras: z
+    .array(z.object({ id: objectId, price: z.coerce.number().int('Amount must be in whole rupees').min(1, 'Enter the add-on amount') }))
+    .max(20)
+    .default([]),
 });
 
 export const quotationExtraSchema = z.object({

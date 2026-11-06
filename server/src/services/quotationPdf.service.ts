@@ -19,6 +19,8 @@ export interface QuotationPdfData {
   category: QuotationCategory;
   /** System price alone; older quotations without it use `amount`. */
   basePrice?: number;
+  /** System row price after included add-ons are taken out. */
+  systemPrice?: number;
   extras?: Array<{ name: string; description?: string; price: number }>;
   amount: number;
   quotationDate: Date;
@@ -223,7 +225,7 @@ export async function buildQuotationPdf(data: QuotationPdfData): Promise<Buffer>
 
   // Row 1 is the solar system; each ticked add-on (Insurance, WiFi dongle, ...) follows.
   const items = [
-    { title: QUOTATION_SYSTEM.title, description: QUOTATION_SYSTEM.description, price: data.basePrice ?? data.amount },
+    { title: QUOTATION_SYSTEM.title, description: QUOTATION_SYSTEM.description, price: data.systemPrice ?? data.basePrice ?? data.amount },
     ...(data.extras ?? []).map((e) => ({ title: e.name, description: e.description, price: e.price })),
   ];
   let rowBottom = tableTop + 24;

@@ -1,14 +1,16 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
 /**
- * An optional add-on (e.g. Insurance, WiFi dongle) that can be ticked on a
- * quotation. Admins manage the list and prices; inactive add-ons stay in old
+ * An optional add-on (e.g. a policy) that can be ticked on a quotation. The
+ * package total never changes: the add-on's price is shown as its own row and
+ * taken out of the panels + inverter row. Admins manage the list and prices; inactive add-ons stay in old
  * quotations but are no longer offered.
  */
 export interface IQuotationExtra extends Document {
   _id: Types.ObjectId;
   name: string;
   description?: string;
+  /** Default amount filled in on the form; it can be changed on each quotation. */
   price: number;
   active: boolean;
   createdAt: Date;

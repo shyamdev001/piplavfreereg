@@ -6,6 +6,8 @@ export interface IQuotationLineExtra {
   name: string;
   description?: string;
   price: number;
+  /** Always true now; false only on quotations made when add-ons were charged on top. */
+  includedInPrice?: boolean;
 }
 
 export interface IQuotation extends Document {
@@ -18,6 +20,8 @@ export interface IQuotation extends Document {
   category: QuotationCategory;
   /** Price of the 2.18 kW system alone (missing on quotations made before add-ons existed). */
   basePrice?: number;
+  /** System row on the PDF: basePrice minus any add-ons included in it. */
+  systemPrice?: number;
   extras: IQuotationLineExtra[];
   /** Grand total at the time the quotation was made (prices may change later). */
   amount: number;
@@ -40,10 +44,16 @@ const quotationSchema = new Schema<IQuotation>(
     village: { type: String, enum: Object.values(QuotationVillage), default: QuotationVillage.PIPLAV },
     category: { type: String, enum: Object.values(QuotationCategory), required: true },
     basePrice: { type: Number },
+    systemPrice: { type: Number },
     extras: {
       type: [
         new Schema<IQuotationLineExtra>(
-          { name: { type: String, required: true }, description: String, price: { type: Number, required: true } },
+          {
+            name: { type: String, required: true },
+            description: String,
+            price: { type: Number, required: true },
+            includedInPrice: { type: Boolean, default: false },
+          },
           { _id: false },
         ),
       ],
