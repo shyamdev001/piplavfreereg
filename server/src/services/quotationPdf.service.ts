@@ -7,6 +7,7 @@ import {
   QUOTATION_NOTES,
   QUOTATION_SELLER,
   QUOTATION_SYSTEM,
+  STAFF_QUOTATION,
   QuotationCategory,
 } from '../config/quotation';
 import { formatIndianAmount, rupeesInWords } from '../utils/amountInWords';
@@ -22,6 +23,8 @@ export interface QuotationPdfData {
   /** System row price after included add-ons are taken out. */
   systemPrice?: number;
   extras?: Array<{ name: string; description?: string; price: number }>;
+  /** Staff quotations: false prints the "policy not included" note. */
+  policyIncluded?: boolean;
   amount: number;
   quotationDate: Date;
   expiryDate: Date;
@@ -265,7 +268,13 @@ export async function buildQuotationPdf(data: QuotationPdfData): Promise<Buffer>
   w.money(data.amount, tableRight - 8, grandTop + 7, 10, { bold: true, color: ORANGE });
   w.line(totalsLeft - 18, totalsTop - 6, totalsLeft - 18, grandTop + 22);
   const words = rupeesInWords(data.amount);
-  w.paragraph(words, tableLeft + 6, totalsTop + 36, 8.5, totalsLeft - tableLeft - 40, { color: ORANGE });
+  const wordsH = w.paragraph(words, tableLeft + 6, totalsTop + 36, 8.5, totalsLeft - tableLeft - 40, { color: ORANGE });
+  if (data.policyIncluded === false) {
+    w.paragraph(STAFF_QUOTATION.policyNotIncludedNote, tableLeft + 6, totalsTop + 36 + wordsH + 10, 9, totalsLeft - tableLeft - 40, {
+      bold: true,
+      color: rgb(0.75, 0.1, 0.1),
+    });
+  }
 
   // ---- Notes / Bank / Signature ----
   const footTop = grandTop + 40;

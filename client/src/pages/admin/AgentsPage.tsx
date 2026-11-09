@@ -36,7 +36,7 @@ const createAgentSchema = z.object({
   email: z.string().trim().email('Enter a valid email'),
   phone: z.string().trim().regex(/^[0-9]{10}$/, 'Enter a valid 10-digit phone number'),
   password: passwordRules,
-  role: z.enum(['AGENT', 'VIEWER', 'QUOTATION']),
+  role: z.enum(['AGENT', 'VIEWER', 'QUOTATION', 'QUOTATION_STAFF']),
 });
 type CreateAgentForm = z.infer<typeof createAgentSchema>;
 
@@ -45,7 +45,18 @@ const resetPasswordSchema = z.object({
 });
 type ResetPasswordForm = z.infer<typeof resetPasswordSchema>;
 
-const ROLE_LABEL: Record<Agent['role'], string> = { AGENT: 'Agent', VIEWER: 'Viewer', QUOTATION: 'Quotation' };
+const ROLE_LABEL: Record<Agent['role'], string> = {
+  AGENT: 'Agent',
+  VIEWER: 'Viewer',
+  QUOTATION: 'Quotation',
+  QUOTATION_STAFF: 'Quotation staff',
+};
+
+const ROLE_SUMMARY: Record<Exclude<Agent['role'], 'AGENT'>, string> = {
+  VIEWER: 'Read-only access to all registrations',
+  QUOTATION: 'Makes Piplav and other-village quotations',
+  QUOTATION_STAFF: 'Makes other-village quotations (policy tick)',
+};
 
 export function AgentsPage() {
   const [agents, setAgents] = React.useState<Agent[]>([]);
@@ -153,12 +164,13 @@ export function AgentsPage() {
             </DialogHeader>
             <form onSubmit={handleCreateSubmit(onCreate)} className="space-y-4">
               <FormField label="Account type" htmlFor="role" required>
-                <div id="role" className="grid gap-2 sm:grid-cols-3">
+                <div id="role" className="grid gap-2 sm:grid-cols-2">
                   {(
                     [
                       { value: 'AGENT', title: 'Field Agent', hint: 'Adds and edits registrations' },
                       { value: 'VIEWER', title: 'Viewer', hint: 'Sees everything, downloads documents, edits nothing' },
-                      { value: 'QUOTATION', title: 'Quotation', hint: 'Only makes customer quotations' },
+                      { value: 'QUOTATION', title: 'Quotation (all)', hint: 'Piplav and other-village quotations, with add-ons' },
+                      { value: 'QUOTATION_STAFF', title: 'Quotation staff', hint: 'Other-village quotations only, policy tick' },
                     ] as const
                   ).map((option) => (
                     <label
@@ -269,7 +281,7 @@ export function AgentsPage() {
 
                 {agent.role !== 'AGENT' ? (
                   <p className="rounded-xl bg-secondary/60 px-3.5 py-2.5 text-sm font-medium text-muted-foreground">
-                    {agent.role === 'VIEWER' ? 'Read-only access to all registrations' : 'Makes customer quotations'}
+                    {ROLE_SUMMARY[agent.role]}
                   </p>
                 ) : (
                 <Link

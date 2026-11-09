@@ -47,6 +47,18 @@ export const QUOTATION_SYSTEM = {
   description: '(1) PV Modules - APS Solar Panel (545W) - 4 Nos\n(2) Inverter - APS / SOLARYAAN / VELOX - 1 Nos',
 };
 
+/**
+ * Staff quotations (QUOTATION_STAFF role): always Other village, same system and
+ * prices, with a policy that is ticked by default. Unticking it takes the policy
+ * amount off the total and prints a "not included" note on the PDF.
+ */
+export const STAFF_QUOTATION = {
+  village: 'OTHER' as QuotationVillage,
+  categories: ['GENERAL', 'PASHUPALAK'] as QuotationCategory[],
+  policy: { name: 'Policy', price: 700 },
+  policyNotIncludedNote: 'Note: Policy is not included in this quotation.',
+};
+
 /** Days a quotation stays valid. */
 export const QUOTATION_VALIDITY_DAYS = 30;
 

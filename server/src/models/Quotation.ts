@@ -17,6 +17,10 @@ export interface IQuotation extends Document {
   address: string;
   mobileNumber: string;
   village: QuotationVillage;
+  /** STANDARD: Mukt's form (Piplav/Other, add-ons). STAFF: Other village with the fixed policy tick. */
+  kind: 'STANDARD' | 'STAFF';
+  /** STAFF quotations only: false prints the "policy not included" note. */
+  policyIncluded?: boolean;
   category: QuotationCategory;
   /** Price of the 2.18 kW system alone (missing on quotations made before add-ons existed). */
   basePrice?: number;
@@ -30,6 +34,7 @@ export interface IQuotation extends Document {
   expiryDate: Date;
   createdBy: Types.ObjectId;
   createdByName: string;
+  updatedByName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,6 +47,8 @@ const quotationSchema = new Schema<IQuotation>(
     mobileNumber: { type: String, required: true, trim: true },
     // Quotations made before villages existed were all for Piplav.
     village: { type: String, enum: Object.values(QuotationVillage), default: QuotationVillage.PIPLAV },
+    kind: { type: String, enum: ['STANDARD', 'STAFF'], default: 'STANDARD' },
+    policyIncluded: { type: Boolean },
     category: { type: String, enum: Object.values(QuotationCategory), required: true },
     basePrice: { type: Number },
     systemPrice: { type: Number },
@@ -65,6 +72,7 @@ const quotationSchema = new Schema<IQuotation>(
     expiryDate: { type: Date, required: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     createdByName: { type: String, required: true },
+    updatedByName: { type: String },
   },
   { timestamps: true },
 );

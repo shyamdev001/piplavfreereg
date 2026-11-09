@@ -18,10 +18,18 @@ export const Counter = model<ICounter>('Counter', counterSchema);
  * safe under concurrent lead creation across multiple agents/requests.
  */
 export async function getNextSequence(key: string): Promise<number> {
-  const doc = await Counter.findOneAndUpdate(
-    { _id: key },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true },
-  ).lean();
-  return doc!.seq;
+  // Two requests creating the same new key at the same instant can both try to
+  // insert it; the loser gets a duplicate-key error and simply retries the $inc.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const doc = await Counter.findOneAndUpdate(
+        { _id: key },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true },
+      ).lean();
+      return doc!.seq;
+    } catch (err) {
+      if ((err as { code?: number }).code !== 11000 || attempt >= 4) throw err;
+    }
+  }
 }

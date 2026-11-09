@@ -47,6 +47,10 @@ const ACTION_META: Record<string, { label: string; icon: React.ComponentType<{ c
   AGENT_DISABLED: { label: 'Disabled agent', icon: UserX, tone: 'bg-destructive/12 text-destructive' },
   AGENT_ENABLED: { label: 'Enabled agent', icon: UserCheck, tone: 'bg-success/12 text-success' },
   AGENT_CREDENTIALS_RESET: { label: 'Reset agent credentials', icon: KeyRound, tone: 'bg-accent/18 text-accent-foreground' },
+  QUOTATION_CREATED: { label: 'Created quotation', icon: Plus, tone: 'bg-primary/12 text-primary' },
+  QUOTATION_UPDATED: { label: 'Edited quotation', icon: Pencil, tone: 'bg-info/12 text-info' },
+  QUOTATION_DOWNLOADED: { label: 'Downloaded quotation', icon: Download, tone: 'bg-info/12 text-info' },
+  QUOTATION_DELETED: { label: 'Deleted quotation', icon: Trash2, tone: 'bg-destructive/12 text-destructive' },
 };
 
 export function AuditLogPage() {

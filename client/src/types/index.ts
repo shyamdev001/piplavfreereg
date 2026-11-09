@@ -1,9 +1,9 @@
-export type UserRole = 'ADMIN' | 'AGENT' | 'VIEWER' | 'QUOTATION';
+export type UserRole = 'ADMIN' | 'AGENT' | 'VIEWER' | 'QUOTATION' | 'QUOTATION_STAFF';
 
 /** Where each role lands after login: viewers share the (read-only) admin screens. */
 export function homePathFor(role: UserRole): string {
   if (role === 'AGENT') return '/agent';
-  if (role === 'QUOTATION') return '/quotations';
+  if (role === 'QUOTATION' || role === 'QUOTATION_STAFF') return '/quotations';
   return '/admin';
 }
 export type UserStatus = 'ACTIVE' | 'DISABLED';
@@ -52,7 +52,7 @@ export interface Agent {
   name: string;
   email: string;
   phone: string;
-  role: 'AGENT' | 'VIEWER' | 'QUOTATION';
+  role: 'AGENT' | 'VIEWER' | 'QUOTATION' | 'QUOTATION_STAFF';
   status: UserStatus;
   createdAt: string;
   totalLeads: number;

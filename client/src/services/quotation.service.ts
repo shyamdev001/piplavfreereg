@@ -37,6 +37,10 @@ export interface Quotation {
   address: string;
   mobileNumber: string;
   village?: QuotationVillage;
+  /** STANDARD: main form (Piplav/Other, add-ons). STAFF: other village with the policy tick. */
+  kind?: 'STANDARD' | 'STAFF';
+  /** Staff quotations: false = policy not included. */
+  policyIncluded?: boolean;
   category: QuotationCategory;
   basePrice?: number;
   systemPrice?: number;
@@ -46,15 +50,19 @@ export interface Quotation {
   quotationDate: string;
   expiryDate: string;
   createdByName: string;
+  updatedByName?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CreateQuotationInput {
   customerName: string;
   address: string;
   mobileNumber: string;
-  village: QuotationVillage;
+  village?: QuotationVillage;
   category: QuotationCategory;
+  /** Staff quotations only. */
+  policyIncluded?: boolean;
   /** Ticked add-ons with the amount for this customer. */
   extras: Array<{ id: string; price: number }>;
 }
@@ -101,7 +109,75 @@ export async function createQuotation(input: CreateQuotationInput): Promise<Quot
   return data.quotation;
 }
 
-export async function listQuotations(params: { search?: string; page?: number; limit?: number }): Promise<{
+/** Staff quotations: other village, Rs 700 policy ticked by default. Keep in step with the server config. */
+export const STAFF_POLICY_PRICE = 700;
+export const STAFF_CATEGORY_OPTIONS = QUOTATION_CATEGORY_OPTIONS.OTHER;
+
+/** Ticked: policy is inside the fixed total. Unticked: the policy amount comes off the total. */
+export function staffQuotationTotal(category: QuotationCategory, policyIncluded: boolean) {
+  const base = STAFF_CATEGORY_OPTIONS.find((o) => o.value === category)?.amount ?? 0;
+  const systemPrice = base - STAFF_POLICY_PRICE;
+  return { systemPrice, total: policyIncluded ? base : systemPrice };
+}
+
+export type UpdateQuotationInput = Partial<{
+  customerName: string;
+  address: string;
+  mobileNumber: string;
+  category: QuotationCategory;
+  policyIncluded: boolean;
+}>;
+
+export async function updateQuotation(id: string, input: UpdateQuotationInput): Promise<Quotation> {
+  const { data } = await api.patch(`/quotations/${id}`, input);
+  return data.quotation;
+}
+
+// ---- History ----
+
+export type QuotationHistoryAction = 'QUOTATION_CREATED' | 'QUOTATION_UPDATED' | 'QUOTATION_DOWNLOADED' | 'QUOTATION_DELETED';
+
+export interface QuotationHistoryEntry {
+  _id: string;
+  action: QuotationHistoryAction;
+  actorId: string;
+  actorName: string;
+  actorRole: string;
+  targetId?: string;
+  targetLabel?: string;
+  details?: string;
+  createdAt: string;
+}
+
+export interface QuotationHistoryFilters {
+  actorId?: string;
+  targetId?: string;
+  action?: QuotationHistoryAction;
+  search?: string;
+  /** YYYY-MM-DD */
+  from?: string;
+  to?: string;
+}
+
+export async function listQuotationHistory(params: QuotationHistoryFilters & { page?: number; limit?: number }): Promise<{
+  logs: QuotationHistoryEntry[];
+  pagination: PaginationMeta;
+}> {
+  const { data } = await api.get('/quotations/history', { params });
+  return data;
+}
+
+/** Same-origin link (the auth cookie goes with it); the server sends a CSV that opens in Excel. */
+export function quotationHistoryExportUrl(filters: QuotationHistoryFilters): string {
+  const qs = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) qs.set(key, value);
+  });
+  const query = qs.toString();
+  return `/api/quotations/history/export${query ? `?${query}` : ''}`;
+}
+
+export async function listQuotations(params: { search?: string; createdBy?: string; page?: number; limit?: number }): Promise<{
   quotations: Quotation[];
   pagination: PaginationMeta;
 }> {

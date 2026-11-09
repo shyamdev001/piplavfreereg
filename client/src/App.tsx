@@ -30,6 +30,9 @@ const AgentsPage = lazy(() => import('@/pages/admin/AgentsPage').then((m) => ({ 
 const QuotationsPage = lazy(() =>
   import('@/pages/quotations/QuotationsPage').then((m) => ({ default: m.QuotationsPage })),
 );
+const QuotationHistoryPage = lazy(() =>
+  import('@/pages/quotations/QuotationHistoryPage').then((m) => ({ default: m.QuotationHistoryPage })),
+);
 const AuditLogPage = lazy(() =>
   import('@/pages/admin/AuditLogPage').then((m) => ({ default: m.AuditLogPage })),
 );
@@ -84,9 +87,15 @@ export default function App() {
           <Route path="/admin/leads/:id/edit" element={<LeadWizardPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'VIEWER', 'QUOTATION']} />}>
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'VIEWER', 'QUOTATION', 'QUOTATION_STAFF']} />}>
           <Route element={<AdminLayout />}>
             <Route path="/quotations" element={<QuotationsPage />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'VIEWER']} />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/quotations/history" element={<QuotationHistoryPage />} />
           </Route>
         </Route>
 

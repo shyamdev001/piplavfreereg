@@ -8,7 +8,7 @@ import { UserRole, UserStatus, AuditAction } from '../types/enums';
 import { recordAudit } from '../services/audit.service';
 
 /** Accounts an admin manages on the Team page: field agents, read-only viewers and quotation users. */
-const MANAGED_ROLES = { $in: [UserRole.AGENT, UserRole.VIEWER, UserRole.QUOTATION] };
+const MANAGED_ROLES = { $in: [UserRole.AGENT, UserRole.VIEWER, UserRole.QUOTATION, UserRole.QUOTATION_STAFF] };
 
 export const listAgents = catchAsync(async (_req: Request, res: Response) => {
   const agents = await User.find({ role: MANAGED_ROLES }).sort({ createdAt: -1 }).lean();
@@ -77,7 +77,14 @@ export const createAgent = catchAsync(async (req: Request, res: Response) => {
     targetType: 'User',
     targetId: agent._id.toString(),
     targetLabel: agent.name,
-    details: role === UserRole.VIEWER ? 'Viewer account' : role === UserRole.QUOTATION ? 'Quotation account' : undefined,
+    details:
+      role === UserRole.VIEWER
+        ? 'Viewer account'
+        : role === UserRole.QUOTATION
+          ? 'Quotation account'
+          : role === UserRole.QUOTATION_STAFF
+            ? 'Quotation staff account'
+            : undefined,
     req,
   });
 

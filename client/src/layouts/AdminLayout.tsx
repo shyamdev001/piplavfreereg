@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, ClipboardList, ScrollText, FileText, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, ScrollText, FileText, History, LogOut, Menu, X } from 'lucide-react';
 import type { UserRole } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { cn, initials } from '@/lib/utils';
@@ -9,7 +9,8 @@ import { Logo } from '@/components/brand/Logo';
 const NAV_ITEMS: Array<{ to: string; label: string; icon: typeof Users; end?: boolean; roles: UserRole[] }> = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true, roles: ['ADMIN', 'VIEWER'] },
   { to: '/admin/leads', label: 'Registrations', icon: ClipboardList, roles: ['ADMIN', 'VIEWER'] },
-  { to: '/quotations', label: 'Quotations', icon: FileText, roles: ['ADMIN', 'VIEWER', 'QUOTATION'] },
+  { to: '/quotations', label: 'Quotations', icon: FileText, end: true, roles: ['ADMIN', 'VIEWER', 'QUOTATION', 'QUOTATION_STAFF'] },
+  { to: '/quotations/history', label: 'Quotation History', icon: History, roles: ['ADMIN', 'VIEWER'] },
   { to: '/admin/agents', label: 'Team', icon: Users, roles: ['ADMIN'] },
   { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText, roles: ['ADMIN'] },
 ];
@@ -17,6 +18,7 @@ const NAV_ITEMS: Array<{ to: string; label: string; icon: typeof Users; end?: bo
 const ROLE_CAPTION: Partial<Record<UserRole, string>> = {
   VIEWER: 'Viewer (read-only)',
   QUOTATION: 'Quotations',
+  QUOTATION_STAFF: 'Quotation staff',
 };
 
 export function AdminLayout() {

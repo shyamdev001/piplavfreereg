@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Download, Eye, FileText, Search, Trash2, ChevronLeft, ChevronRight, Sun } from 'lucide-react';
+import { Download, Eye, FileText, History, Pencil, Search, Trash2, ChevronLeft, ChevronRight, Sun } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,6 +27,10 @@ import {
 } from '@/services/quotation.service';
 import type { PaginationMeta } from '@/types';
 import { AddOnsManager } from './AddOnsManager';
+import { StaffQuotationCard } from './StaffQuotationCard';
+import { EditQuotationDialog } from './EditQuotationDialog';
+import * as agentService from '@/services/agent.service';
+import type { Agent } from '@/types';
 
 // The PDF prints Latin text only, so Gujarati/Hindi typing is caught here first.
 const englishOnly = /^[\x20-\x7E\r\n]*$/;
@@ -250,7 +255,12 @@ function NewQuotationCard({ extras, onCreated }: { extras: QuotationExtra[]; onC
 
 export function QuotationsPage() {
   const role = useAuth().user?.role;
-  const canCreate = role === 'ADMIN' || role === 'QUOTATION';
+  const isStaff = role === 'QUOTATION_STAFF';
+  // Staff get their own form (other village + policy tick); Mukt's form stays as it is.
+  const canCreate = role === 'ADMIN' || role === 'QUOTATION' || isStaff;
+  const usesAddOns = role === 'ADMIN' || role === 'QUOTATION';
+  const canEdit = canCreate;
+  const canSeeHistory = role === 'ADMIN' || role === 'VIEWER';
   const canDelete = role === 'ADMIN';
 
   const [quotations, setQuotations] = React.useState<Quotation[]>([]);
@@ -259,18 +269,30 @@ export function QuotationsPage() {
   const [search, setSearch] = React.useState('');
   const [page, setPage] = React.useState(1);
   const debouncedSearch = useDebounce(search, 350);
+  const [editing, setEditing] = React.useState<Quotation | null>(null);
+
+  // Admins and viewers can narrow the list to one person's quotations.
+  const [makers, setMakers] = React.useState<Agent[]>([]);
+  const [createdBy, setCreatedBy] = React.useState('');
+  React.useEffect(() => {
+    if (!canSeeHistory) return;
+    agentService
+      .listAgents()
+      .then((list) => setMakers(list.filter((a) => a.role === 'QUOTATION' || a.role === 'QUOTATION_STAFF')))
+      .catch(() => setMakers([]));
+  }, [canSeeHistory]);
 
   const load = React.useCallback(() => {
     setLoading(true);
     quotationService
-      .listQuotations({ search: debouncedSearch || undefined, page, limit: 20 })
+      .listQuotations({ search: debouncedSearch || undefined, createdBy: createdBy || undefined, page, limit: 20 })
       .then((data) => {
         setQuotations(data.quotations);
         setPagination(data.pagination);
       })
       .catch((err) => toast.error(getErrorMessage(err)))
       .finally(() => setLoading(false));
-  }, [debouncedSearch, page]);
+  }, [debouncedSearch, createdBy, page]);
 
   React.useEffect(() => {
     load();
@@ -278,7 +300,7 @@ export function QuotationsPage() {
 
   React.useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, createdBy]);
 
   const [extras, setExtras] = React.useState<QuotationExtra[]>([]);
   const loadExtras = React.useCallback(() => {
@@ -288,8 +310,8 @@ export function QuotationsPage() {
       .catch((err) => toast.error(getErrorMessage(err, 'Unable to load add-ons.')));
   }, []);
   React.useEffect(() => {
-    if (canCreate) loadExtras();
-  }, [canCreate, loadExtras]);
+    if (usesAddOns) loadExtras();
+  }, [usesAddOns, loadExtras]);
 
   const handleDelete = async (q: Quotation) => {
     if (!window.confirm(`Delete quotation ${q.quotationNumber} for ${q.customerName}?`)) return;
@@ -307,28 +329,54 @@ export function QuotationsPage() {
       <div>
         <h1 className="text-[1.75rem] font-extrabold tracking-tight text-foreground">Quotations</h1>
         <p className="text-sm text-muted-foreground">
-          {canCreate ? 'Fill in the customer details - the PDF is made from the Piplav template.' : 'All quotations made so far.'}
+          {isStaff
+            ? 'Other village quotations - fill in the customer details and download the PDF.'
+            : canCreate
+              ? 'Fill in the customer details - the PDF is made from the Piplav template.'
+              : 'All quotations made so far.'}
         </p>
       </div>
 
       <div className={cn('grid gap-5', canCreate && 'lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]')}>
         {canCreate && (
           <div className="space-y-5">
-            <NewQuotationCard extras={extras} onCreated={() => (page === 1 ? load() : setPage(1))} />
+            {isStaff ? (
+              <StaffQuotationCard onCreated={() => (page === 1 ? load() : setPage(1))} />
+            ) : (
+              <NewQuotationCard extras={extras} onCreated={() => (page === 1 ? load() : setPage(1))} />
+            )}
             {role === 'ADMIN' && <AddOnsManager extras={extras} onChanged={loadExtras} />}
           </div>
         )}
 
         <div className="min-w-0 space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, mobile or quotation no."
-              className="pl-9"
-              aria-label="Search quotations"
-            />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, mobile or quotation no."
+                className="pl-9"
+                aria-label="Search quotations"
+              />
+            </div>
+            {canSeeHistory && makers.length > 0 && (
+              <select
+                value={createdBy}
+                onChange={(e) => setCreatedBy(e.target.value)}
+                aria-label="Filter by who made it"
+                className="h-10 rounded-xl border border-input bg-background px-3 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">Made by anyone</option>
+                {makers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                    {m.role === 'QUOTATION_STAFF' ? ' (staff)' : ''}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {loading ? (
@@ -352,10 +400,17 @@ export function QuotationsPage() {
                       {formatDate(q.createdAt)} · {QUOTATION_VILLAGE_LABEL[q.village ?? 'PIPLAV']} ·{' '}
                       {QUOTATION_CATEGORY_LABEL[q.category]}
                       {q.extras?.length ? ` + ${q.extras.map((e) => e.name).join(', ')}` : ''} · by {q.createdByName}
+                      {q.updatedByName ? ` · edited by ${q.updatedByName}` : ''}
                     </p>
+                    {q.policyIncluded === false && <p className="text-xs font-bold text-destructive">Policy not included</p>}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono-brand text-sm font-extrabold tabular-nums text-primary">{formatCurrency(q.amount)}</span>
+                    {canEdit && (
+                      <Button size="sm" variant="outline" onClick={() => setEditing(q)}>
+                        <Pencil className="h-3.5 w-3.5" /> Edit
+                      </Button>
+                    )}
                     <Button asChild size="sm" variant="outline">
                       <a href={quotationService.quotationPdfUrl(q._id, true)} target="_blank" rel="noopener">
                         <Eye className="h-3.5 w-3.5" /> View
@@ -366,6 +421,15 @@ export function QuotationsPage() {
                         <Download className="h-3.5 w-3.5" /> PDF
                       </a>
                     </Button>
+                    {canSeeHistory && (
+                      <Button asChild size="sm" variant="ghost" title="History" aria-label="Quotation history">
+                        <Link
+                          to={`/quotations/history?quotation=${q._id}&label=${encodeURIComponent(`${q.quotationNumber} - ${q.customerName}`)}`}
+                        >
+                          <History className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    )}
                     {canDelete && (
                       <Button size="sm" variant="ghost" title="Delete" aria-label="Delete quotation" onClick={() => handleDelete(q)}>
                         <Trash2 className="h-4 w-4" />
@@ -394,6 +458,8 @@ export function QuotationsPage() {
           )}
         </div>
       </div>
+
+      <EditQuotationDialog quotation={editing} onClose={() => setEditing(null)} onSaved={load} />
     </div>
   );
 }

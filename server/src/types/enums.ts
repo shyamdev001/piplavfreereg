@@ -3,8 +3,10 @@ export const UserRole = {
   AGENT: 'AGENT',
   /** Read-only: sees every registration and can view/download documents, but changes nothing. */
   VIEWER: 'VIEWER',
-  /** Makes customer quotations only; has no access to registrations. */
+  /** Makes customer quotations only (Piplav and other villages, with add-ons); no access to registrations. */
   QUOTATION: 'QUOTATION',
+  /** Staff: makes Other-village quotations only, with the fixed policy tick; sees only their own. */
+  QUOTATION_STAFF: 'QUOTATION_STAFF',
 } as const;
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
@@ -82,6 +84,7 @@ export const AuditAction = {
   AGENT_ENABLED: 'AGENT_ENABLED',
   AGENT_CREDENTIALS_RESET: 'AGENT_CREDENTIALS_RESET',
   QUOTATION_CREATED: 'QUOTATION_CREATED',
+  QUOTATION_UPDATED: 'QUOTATION_UPDATED',
   QUOTATION_DOWNLOADED: 'QUOTATION_DOWNLOADED',
   QUOTATION_DELETED: 'QUOTATION_DELETED',
 } as const;
