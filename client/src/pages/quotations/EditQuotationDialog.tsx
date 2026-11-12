@@ -12,6 +12,7 @@ import { getErrorMessage } from '@/lib/axios';
 import { cn, formatCurrency } from '@/lib/utils';
 import * as quotationService from '@/services/quotation.service';
 import {
+  LEGACY_PACKAGE_PRICES,
   QUOTATION_CATEGORY_OPTIONS,
   QUOTATION_VILLAGE_LABEL,
   STAFF_CATEGORY_OPTIONS,
@@ -74,8 +75,12 @@ export function EditQuotationDialog({
   let total = quotation?.amount ?? 0;
   if (quotation && category) {
     if (isStaff) total = staffQuotationTotal(category, policyIncluded).total;
-    else {
+    else if (quotation.pricingMode === 'ON_TOP') {
       const base = categoryOptions.find((o) => o.value === category)?.amount ?? 0;
+      total = base + (quotation.extras ?? []).reduce((s, e) => s + e.price, 0);
+    } else {
+      // Made before add-ons went on top: the old package price stays the total.
+      const base = LEGACY_PACKAGE_PRICES[village][category] ?? 0;
       const onTop = (quotation.extras ?? []).filter((e) => !e.includedInPrice).reduce((s, e) => s + e.price, 0);
       total = base + onTop;
     }

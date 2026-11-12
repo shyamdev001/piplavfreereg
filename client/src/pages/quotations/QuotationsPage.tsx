@@ -80,9 +80,9 @@ function NewQuotationCard({ extras, onCreated }: { extras: QuotationExtra[]; onC
   const ticked = offered
     .filter((e) => e._id in picked)
     .map((e) => ({ ...e, amount: Number(picked[e._id] || 0) }));
-  // The package price is the fixed total; ticked add-ons are carved out of the panels + inverter row.
-  const systemPrice = basePrice - ticked.reduce((sum, e) => sum + e.amount, 0);
-  const amount = basePrice;
+  // Ticked add-ons are added on top of the panels + inverter price.
+  const systemPrice = basePrice;
+  const amount = basePrice + ticked.reduce((sum, e) => sum + e.amount, 0);
 
   // Each village has its own categories; fall back to General when the old choice isn't offered.
   React.useEffect(() => {
@@ -93,10 +93,6 @@ function NewQuotationCard({ extras, onCreated }: { extras: QuotationExtra[]; onC
     const missing = ticked.find((e) => e.amount <= 0);
     if (missing) {
       toast.error(`Enter the ${missing.name} amount.`);
-      return;
-    }
-    if (systemPrice <= 0) {
-      toast.error('Add-ons cost more than the package price.');
       return;
     }
     try {
@@ -235,9 +231,6 @@ function NewQuotationCard({ extras, onCreated }: { extras: QuotationExtra[]; onC
               <span className="text-sm font-bold text-muted-foreground">Quotation total</span>
               <span className="font-mono-brand text-lg font-extrabold tabular-nums text-primary">{formatCurrency(amount)}</span>
             </div>
-            {systemPrice <= 0 && (
-              <p className="text-xs font-semibold text-destructive">Add-ons cost more than the package price.</p>
-            )}
           </div>
 
           <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>

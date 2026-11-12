@@ -6,7 +6,7 @@ export interface IQuotationLineExtra {
   name: string;
   description?: string;
   price: number;
-  /** Always true now; false only on quotations made when add-ons were charged on top. */
+  /** true only on quotations saved while add-ons were carved out of a fixed total. */
   includedInPrice?: boolean;
 }
 
@@ -24,8 +24,10 @@ export interface IQuotation extends Document {
   category: QuotationCategory;
   /** Price of the 2.18 kW system alone (missing on quotations made before add-ons existed). */
   basePrice?: number;
-  /** System row on the PDF: basePrice minus any add-ons included in it. */
+  /** System row on the PDF. */
   systemPrice?: number;
+  /** 'ON_TOP': add-ons/policy added to the system price. Missing: older fixed-total pricing. */
+  pricingMode?: 'ON_TOP';
   extras: IQuotationLineExtra[];
   /** Grand total at the time the quotation was made (prices may change later). */
   amount: number;
@@ -52,6 +54,7 @@ const quotationSchema = new Schema<IQuotation>(
     category: { type: String, enum: Object.values(QuotationCategory), required: true },
     basePrice: { type: Number },
     systemPrice: { type: Number },
+    pricingMode: { type: String, enum: ['ON_TOP'] },
     extras: {
       type: [
         new Schema<IQuotationLineExtra>(

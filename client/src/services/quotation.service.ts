@@ -19,8 +19,8 @@ export const QUOTATION_CATEGORY_OPTIONS: Record<
     { value: 'SC_ST', label: 'SC/ST', amount: 102695 },
   ],
   OTHER: [
-    { value: 'GENERAL', label: 'General', amount: 110700 },
-    { value: 'PASHUPALAK', label: 'Pashupalak', amount: 108700 },
+    { value: 'GENERAL', label: 'General', amount: 110000 },
+    { value: 'PASHUPALAK', label: 'Pashupalak', amount: 108000 },
   ],
 };
 
@@ -45,6 +45,8 @@ export interface Quotation {
   basePrice?: number;
   systemPrice?: number;
   extras?: Array<{ name: string; description?: string; price: number; includedInPrice?: boolean }>;
+  /** 'ON_TOP': add-ons added to the system price. Missing on older fixed-total quotations. */
+  pricingMode?: 'ON_TOP';
   amount: number;
   systemSizeKw: number;
   quotationDate: string;
@@ -69,7 +71,7 @@ export interface CreateQuotationInput {
 
 /**
  * Optional add-on (e.g. a policy). `price` is only the default amount: it is typed per quotation
- * and taken out of the panels + inverter price, so the total stays fixed.
+ * and added on top of the panels + inverter price.
  */
 export interface QuotationExtra {
   _id: string;
@@ -113,12 +115,17 @@ export async function createQuotation(input: CreateQuotationInput): Promise<Quot
 export const STAFF_POLICY_PRICE = 700;
 export const STAFF_CATEGORY_OPTIONS = QUOTATION_CATEGORY_OPTIONS.OTHER;
 
-/** Ticked: policy is inside the fixed total. Unticked: the policy amount comes off the total. */
+/** Ticked: the policy is added on top of the system price. Unticked: it is left out. */
 export function staffQuotationTotal(category: QuotationCategory, policyIncluded: boolean) {
-  const base = STAFF_CATEGORY_OPTIONS.find((o) => o.value === category)?.amount ?? 0;
-  const systemPrice = base - STAFF_POLICY_PRICE;
-  return { systemPrice, total: policyIncluded ? base : systemPrice };
+  const systemPrice = STAFF_CATEGORY_OPTIONS.find((o) => o.value === category)?.amount ?? 0;
+  return { systemPrice, total: systemPrice + (policyIncluded ? STAFF_POLICY_PRICE : 0) };
 }
+
+/** Old fixed package totals, only for previewing edits of quotations made before add-ons went on top. */
+export const LEGACY_PACKAGE_PRICES: Record<QuotationVillage, Partial<Record<QuotationCategory, number>>> = {
+  PIPLAV: { GENERAL: 97290, SC_ST: 102695 },
+  OTHER: { GENERAL: 110700, PASHUPALAK: 108700 },
+};
 
 export type UpdateQuotationInput = Partial<{
   customerName: string;

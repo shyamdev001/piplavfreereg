@@ -12,7 +12,7 @@ async function staffCookie() {
 }
 
 describe('Staff quotations (Other village, policy tick)', () => {
-  it('includes the 700 policy by default, total unchanged', async () => {
+  it('adds the 700 policy on top by default', async () => {
     const { cookie } = await staffCookie();
     const res = await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL' });
     expect(res.status).toBe(201);
@@ -21,11 +21,11 @@ describe('Staff quotations (Other village, policy tick)', () => {
     expect(q.village).toBe('OTHER');
     expect(q.policyIncluded).toBe(true);
     expect(q.systemPrice).toBe(110000);
-    expect(q.extras).toEqual([{ name: 'Policy', price: 700, includedInPrice: true }]);
+    expect(q.extras).toEqual([{ name: 'Policy', price: 700, includedInPrice: false }]);
     expect(q.amount).toBe(110700);
   });
 
-  it('takes 700 off the total when the policy is unticked', async () => {
+  it('leaves the 700 out of the total when the policy is unticked', async () => {
     const { cookie } = await staffCookie();
     const general = await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL', policyIncluded: false });
     expect(general.body.quotation.amount).toBe(110000);
@@ -58,7 +58,7 @@ describe('Staff quotations (Other village, policy tick)', () => {
     expect((await request(app).delete(`/api/quotations/${mine.body.quotation._id}`).set('Cookie', cookie)).status).toBe(403);
   });
 
-  it('leaves the main quotation user (Mukt) exactly as before', async () => {
+  it('keeps the main quotation user (Mukt) on the village form, without the staff tick', async () => {
     const { user } = await createUser({ role: UserRole.QUOTATION });
     const cookie = authCookieFor(user);
     const piplav = await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'SC_ST' });
@@ -68,7 +68,7 @@ describe('Staff quotations (Other village, policy tick)', () => {
     expect(piplav.body.quotation.amount).toBe(102695);
     // The staff policy tick has no effect on the main form.
     const other = await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, village: 'OTHER', category: 'GENERAL', policyIncluded: false });
-    expect(other.body.quotation.amount).toBe(110700);
+    expect(other.body.quotation.amount).toBe(110000);
     expect(other.body.quotation.extras).toEqual([]);
     expect(other.body.quotation.policyIncluded).toBeUndefined();
   });
@@ -135,7 +135,7 @@ describe('Editing quotations', () => {
     // Admin can edit anyone's; changing category reprices.
     const byAdmin = await request(app).patch(`/api/quotations/${muktQ.body.quotation._id}`).set('Cookie', authCookieFor(admin)).send({ category: 'PASHUPALAK' });
     expect(byAdmin.status).toBe(200);
-    expect(byAdmin.body.quotation.amount).toBe(108700);
+    expect(byAdmin.body.quotation.amount).toBe(108000);
     expect(byAdmin.body.quotation.updatedByName).toBeTruthy();
   });
 });

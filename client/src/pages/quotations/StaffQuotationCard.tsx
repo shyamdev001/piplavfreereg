@@ -110,7 +110,7 @@ export function StaffQuotationCard({ onCreated }: { onCreated: () => void }) {
           {!policyIncluded && (
             <p className="flex items-start gap-2 text-xs font-semibold text-destructive">
               <AlertTriangle className="mt-px h-3.5 w-3.5 flex-shrink-0" />
-              Policy not included: {formatCurrency(STAFF_POLICY_PRICE)} is taken off the total and the PDF will say so.
+              Policy not included: {formatCurrency(STAFF_POLICY_PRICE)} is not added to the total and the PDF will say so.
             </p>
           )}
 

@@ -18,6 +18,7 @@ import {
   QuotationCategory,
   QuotationVillage,
   quotationPrice,
+  legacyPackagePrice,
 } from '../config/quotation';
 
 /**
@@ -52,30 +53,36 @@ async function findAccessible(req: Request) {
 const sum = (items: Array<{ price: number }>) => items.reduce((total, e) => total + e.price, 0);
 
 /**
- * Staff quotations: Other village with the policy ticked by default. Ticked, the
- * policy is carved out of the package price (total unchanged); unticked, the
- * policy amount comes off the total.
+ * Staff quotations: Other village, policy ticked by default. Ticked, the policy is
+ * added on top of the system price; unticked, it is left out.
  */
 function staffPricing(category: QuotationCategory, policyIncluded: boolean) {
   if (!STAFF_QUOTATION.categories.includes(category)) throw ApiError.badRequest('Choose General or Pashupalak');
-  const basePrice = quotationPrice(STAFF_QUOTATION.village, category)!;
+  const systemPrice = quotationPrice(STAFF_QUOTATION.village, category)!;
   const { policy } = STAFF_QUOTATION;
-  const systemPrice = basePrice - policy.price;
   return {
-    basePrice,
+    pricingMode: 'ON_TOP' as const,
+    basePrice: systemPrice,
     systemPrice,
-    extras: policyIncluded ? [{ name: policy.name, price: policy.price, includedInPrice: true }] : [],
-    amount: policyIncluded ? basePrice : systemPrice,
+    extras: policyIncluded ? [{ name: policy.name, price: policy.price, includedInPrice: false }] : [],
+    amount: systemPrice + (policyIncluded ? policy.price : 0),
   };
 }
 
-/**
- * Mukt's form: the package price is the fixed total and add-ons are carved out of
- * the panels + inverter row. (Quotations made before that rule stored add-ons
- * without `includedInPrice`; those were charged on top, so they still are.)
- */
+/** Mukt's form: every add-on (policy, insurance, ...) is added on top of the system price. */
 function standardPricing(village: QuotationVillage, category: QuotationCategory, extras: IQuotationLineExtra[]) {
-  const basePrice = quotationPrice(village, category);
+  const systemPrice = quotationPrice(village, category);
+  if (systemPrice === undefined) throw ApiError.badRequest('This category is not available for the selected village');
+  return { pricingMode: 'ON_TOP' as const, basePrice: systemPrice, systemPrice, amount: systemPrice + sum(extras) };
+}
+
+/**
+ * Quotations saved before add-ons were charged on top: the old package price was the
+ * total and `includedInPrice` add-ons were carved out of it. Used when editing them,
+ * so their total only moves if the category changes.
+ */
+function legacyStandardPricing(village: QuotationVillage, category: QuotationCategory, extras: IQuotationLineExtra[]) {
+  const basePrice = legacyPackagePrice(village, category);
   if (basePrice === undefined) throw ApiError.badRequest('This category is not available for the selected village');
   const systemPrice = basePrice - sum(extras.filter((e) => e.includedInPrice));
   if (systemPrice <= 0) throw ApiError.badRequest('Add-ons cost more than the package price');
@@ -111,7 +118,7 @@ export const createQuotation = catchAsync(async (req: Request, res: Response) =>
     const byId = new Map(found.map((e) => [String(e._id), e]));
     const extras = picked.map((p) => {
       const e = byId.get(p.id)!;
-      return { name: e.name, description: e.description, price: p.price, includedInPrice: true };
+      return { name: e.name, description: e.description, price: p.price, includedInPrice: false };
     });
     const v = village ?? QuotationVillage.PIPLAV;
     fields = { village: v, kind: 'STANDARD', extras, ...standardPricing(v, category, extras) };
@@ -184,7 +191,8 @@ export const updateQuotation = catchAsync(async (req: Request, res: Response) =>
     const p = staffPricing(category, included);
     quotation.set({ ...p, policyIncluded: included });
   } else {
-    quotation.set(standardPricing(quotation.village, category, quotation.extras));
+    const pricing = quotation.pricingMode === 'ON_TOP' ? standardPricing : legacyStandardPricing;
+    quotation.set(pricing(quotation.village, category, quotation.extras));
   }
   quotation.category = category;
 

@@ -29,16 +29,30 @@ export const QUOTATION_CATEGORY_LABELS: Record<QuotationCategory, string> = {
 };
 
 /**
- * Total price (incl. everything, GST shown as 0) in rupees, per village and
- * customer category. Each village only offers the categories listed for it.
+ * Price of the 2.18 kW system alone (panels + inverter) in rupees, per village and
+ * customer category. Policy and other add-ons are added on top of this.
+ * Each village only offers the categories listed for it.
  */
 export const QUOTATION_PRICES: Record<QuotationVillage, Partial<Record<QuotationCategory, number>>> = {
   PIPLAV: { GENERAL: 97290, SC_ST: 102695 },
-  OTHER: { GENERAL: 110700, PASHUPALAK: 108700 },
+  OTHER: { GENERAL: 110000, PASHUPALAK: 108000 },
 };
 
 export function quotationPrice(village: QuotationVillage, category: QuotationCategory): number | undefined {
   return QUOTATION_PRICES[village][category];
+}
+
+/**
+ * Old fixed package totals (policy included). Only used to recalculate quotations
+ * saved before add-ons were charged on top, so editing them keeps their old total.
+ */
+const LEGACY_PACKAGE_PRICES: Record<QuotationVillage, Partial<Record<QuotationCategory, number>>> = {
+  PIPLAV: { GENERAL: 97290, SC_ST: 102695 },
+  OTHER: { GENERAL: 110700, PASHUPALAK: 108700 },
+};
+
+export function legacyPackagePrice(village: QuotationVillage, category: QuotationCategory): number | undefined {
+  return LEGACY_PACKAGE_PRICES[village][category];
 }
 
 export const QUOTATION_SYSTEM = {
@@ -49,8 +63,8 @@ export const QUOTATION_SYSTEM = {
 
 /**
  * Staff quotations (QUOTATION_STAFF role): always Other village, same system and
- * prices, with a policy that is ticked by default. Unticking it takes the policy
- * amount off the total and prints a "not included" note on the PDF.
+ * prices, with a policy that is ticked by default and added on top of the system
+ * price. Unticked, it is left out and the PDF prints a "not included" note.
  */
 export const STAFF_QUOTATION = {
   village: 'OTHER' as QuotationVillage,

@@ -59,7 +59,7 @@ function DraftFields({ draft, onChange }: { draft: Draft; onChange: (d: Draft) =
 
 /**
  * Admin-only list of optional add-ons (e.g. a policy). A ticked add-on is
- * taken out of the panels + inverter price, so the total never changes.
+ * added on top of the panels + inverter price.
  * Saved quotations keep their own copy of the prices.
  */
 export function AddOnsManager({ extras, onChanged }: { extras: QuotationExtra[]; onChanged: () => void }) {
@@ -131,8 +131,7 @@ export function AddOnsManager({ extras, onChanged }: { extras: QuotationExtra[];
           <h2 className="text-base font-extrabold text-foreground">Add-ons</h2>
           <p className="text-xs text-muted-foreground">
             Optional items like a policy. The amount here is only the default and can be changed on each quotation
-            (leave it empty to type it every time). The total stays the same: the add-on amount is taken out of the
-            panels + inverter price.
+            (leave it empty to type it every time). The add-on amount is added on top of the panels + inverter price.
           </p>
         </div>
 
