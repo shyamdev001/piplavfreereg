@@ -31,6 +31,8 @@ router.use(requireAuth);
 
 const anyQuotationRole = requireRole(UserRole.QUOTATION, UserRole.QUOTATION_STAFF, UserRole.ADMIN, UserRole.VIEWER);
 const quotationMakers = requireRole(UserRole.QUOTATION, UserRole.QUOTATION_STAFF, UserRole.ADMIN);
+// Viewers may also create quotations, but only for Piplav (checked in the controller); they can't edit.
+const quotationCreators = requireRole(UserRole.QUOTATION, UserRole.QUOTATION_STAFF, UserRole.ADMIN, UserRole.VIEWER);
 const historyReaders = requireRole(UserRole.ADMIN, UserRole.VIEWER);
 
 // Add-ons: everyone who sees quotations can list them; only admins change the list.
@@ -46,7 +48,7 @@ router.get('/history/export', historyReaders, validate({ query: quotationHistory
 // Quotation users, staff and admins make and edit quotations; viewers can see and download them.
 router.get('/', anyQuotationRole, validate({ query: listQuotationsQuerySchema }), listQuotations);
 router.get('/:id/pdf', anyQuotationRole, validate({ params: idParamsSchema }), downloadQuotationPdf);
-router.post('/', quotationMakers, validate({ body: createQuotationSchema }), createQuotation);
+router.post('/', quotationCreators, validate({ body: createQuotationSchema }), createQuotation);
 router.patch('/:id', quotationMakers, validate({ params: idParamsSchema, body: updateQuotationSchema }), updateQuotation);
 router.delete('/:id', requireRole(UserRole.ADMIN), validate({ params: idParamsSchema }), deleteQuotation);
 

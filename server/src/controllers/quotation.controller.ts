@@ -110,6 +110,10 @@ export const createQuotation = catchAsync(async (req: Request, res: Response) =>
     const included = policyIncluded ?? true;
     fields = { village: STAFF_QUOTATION.village, kind: 'STAFF', policyIncluded: included, ...staffPricing(category, included) };
   } else {
+    // Viewers: Piplav only.
+    if (req.user!.role === UserRole.VIEWER && village && village !== QuotationVillage.PIPLAV) {
+      throw ApiError.forbidden('Viewers can only make Piplav quotations');
+    }
     // Name and description come from the add-on list; the amount is typed per quotation.
     const uniqueIds = [...new Set(picked.map((p) => p.id))];
     if (uniqueIds.length !== picked.length) throw ApiError.badRequest('An add-on was selected twice');

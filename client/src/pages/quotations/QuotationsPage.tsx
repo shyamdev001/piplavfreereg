@@ -44,7 +44,16 @@ const quotationSchema = z.object({
 });
 type QuotationForm = z.infer<typeof quotationSchema>;
 
-function NewQuotationCard({ extras, onCreated }: { extras: QuotationExtra[]; onCreated: () => void }) {
+function NewQuotationCard({
+  extras,
+  onCreated,
+  piplavOnly = false,
+}: {
+  extras: QuotationExtra[];
+  onCreated: () => void;
+  /** Viewers: no village choice, always Piplav. */
+  piplavOnly?: boolean;
+}) {
   /** Ticked add-ons -> amount typed for this customer (starts at the add-on's default). */
   const [picked, setPicked] = React.useState<Record<string, string>>({});
   const offered = React.useMemo(() => extras.filter((e) => e.active), [extras]);
@@ -134,7 +143,7 @@ function NewQuotationCard({ extras, onCreated }: { extras: QuotationExtra[]; onC
 
           <FormField label="Village" htmlFor="village" required>
             <div id="village" className="grid grid-cols-2 gap-2">
-              {(['PIPLAV', 'OTHER'] as QuotationVillage[]).map((value) => (
+              {((piplavOnly ? ['PIPLAV'] : ['PIPLAV', 'OTHER']) as QuotationVillage[]).map((value) => (
                 <label
                   key={value}
                   className="flex cursor-pointer items-center gap-2 rounded-xl border border-border/70 p-3 text-sm font-bold transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
@@ -249,10 +258,12 @@ function NewQuotationCard({ extras, onCreated }: { extras: QuotationExtra[]; onC
 export function QuotationsPage() {
   const role = useAuth().user?.role;
   const isStaff = role === 'QUOTATION_STAFF';
+  const isViewer = role === 'VIEWER';
   // Staff get their own form (other village + policy tick); Mukt's form stays as it is.
-  const canCreate = role === 'ADMIN' || role === 'QUOTATION' || isStaff;
-  const usesAddOns = role === 'ADMIN' || role === 'QUOTATION';
-  const canEdit = canCreate;
+  // Viewers get Mukt's form locked to Piplav, and can't edit.
+  const canCreate = role === 'ADMIN' || role === 'QUOTATION' || isStaff || isViewer;
+  const usesAddOns = role === 'ADMIN' || role === 'QUOTATION' || isViewer;
+  const canEdit = canCreate && !isViewer;
   const canSeeHistory = role === 'ADMIN' || role === 'VIEWER';
   const canDelete = role === 'ADMIN';
 
@@ -324,8 +335,10 @@ export function QuotationsPage() {
         <p className="text-sm text-muted-foreground">
           {isStaff
             ? 'Other village quotations - fill in the customer details and download the PDF.'
-            : canCreate
-              ? 'Fill in the customer details - the PDF is made from the Piplav template.'
+            : isViewer
+              ? 'Piplav quotations - fill in the customer details and download the PDF. All quotations are listed here.'
+              : canCreate
+                ? 'Fill in the customer details - the PDF is made from the Piplav template.'
               : 'All quotations made so far.'}
         </p>
       </div>
@@ -336,7 +349,11 @@ export function QuotationsPage() {
             {isStaff ? (
               <StaffQuotationCard onCreated={() => (page === 1 ? load() : setPage(1))} />
             ) : (
-              <NewQuotationCard extras={extras} onCreated={() => (page === 1 ? load() : setPage(1))} />
+              <NewQuotationCard
+                extras={extras}
+                piplavOnly={isViewer}
+                onCreated={() => (page === 1 ? load() : setPage(1))}
+              />
             )}
             {role === 'ADMIN' && <AddOnsManager extras={extras} onChanged={loadExtras} />}
           </div>

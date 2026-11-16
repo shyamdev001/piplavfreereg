@@ -80,7 +80,14 @@ describe('Quotations', () => {
     expect((await request(app).get(`/api/quotations/${mine.body.quotation._id}/pdf`).set('Cookie', authCookieFor(q2))).status).toBe(404);
     expect((await request(app).get('/api/quotations').set('Cookie', authCookieFor(admin))).body.quotations).toHaveLength(2);
     expect((await request(app).get('/api/quotations').set('Cookie', authCookieFor(viewer))).body.quotations).toHaveLength(2);
-    expect((await request(app).post('/api/quotations').set('Cookie', authCookieFor(viewer)).send({ ...customer, category: 'GENERAL' })).status).toBe(403);
+    // Viewers can create Piplav quotations only, and can't edit them.
+    const viewerCookie = authCookieFor(viewer);
+    const byViewer = await request(app).post('/api/quotations').set('Cookie', viewerCookie).send({ ...customer, category: 'GENERAL' });
+    expect(byViewer.status).toBe(201);
+    expect(byViewer.body.quotation.village).toBe('PIPLAV');
+    expect(byViewer.body.quotation.amount).toBe(97290);
+    expect((await request(app).post('/api/quotations').set('Cookie', viewerCookie).send({ ...customer, village: 'OTHER', category: 'GENERAL' })).status).toBe(403);
+    expect((await request(app).patch(`/api/quotations/${byViewer.body.quotation._id}`).set('Cookie', viewerCookie).send({ customerName: 'Changed Name' })).status).toBe(403);
     expect((await request(app).delete(`/api/quotations/${mine.body.quotation._id}`).set('Cookie', authCookieFor(q1))).status).toBe(403);
     expect((await request(app).delete(`/api/quotations/${mine.body.quotation._id}`).set('Cookie', authCookieFor(admin))).status).toBe(200);
   });
