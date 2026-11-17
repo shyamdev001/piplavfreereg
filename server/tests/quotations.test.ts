@@ -38,7 +38,7 @@ describe('Quotations', () => {
     expect((await post({ village: 'OTHER', category: 'PASHUPALAK' })).body.quotation.amount).toBe(108000);
     expect((await post({ village: 'PIPLAV', category: 'GENERAL' })).body.quotation.amount).toBe(97290);
 
-    expect((await post({ village: 'OTHER', category: 'SC_ST' })).status).toBe(400);
+    expect((await post({ village: 'OTHER', category: 'SC_ST' })).body.quotation.amount).toBe(102695);
     expect((await post({ village: 'PIPLAV', category: 'PASHUPALAK' })).status).toBe(400);
     expect((await post({ village: 'ANAND', category: 'GENERAL' })).status).toBe(400);
 

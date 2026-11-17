@@ -57,7 +57,7 @@ const sum = (items: Array<{ price: number }>) => items.reduce((total, e) => tota
  * added on top of the system price; unticked, it is left out.
  */
 function staffPricing(category: QuotationCategory, policyIncluded: boolean) {
-  if (!STAFF_QUOTATION.categories.includes(category)) throw ApiError.badRequest('Choose General or Pashupalak');
+  if (!STAFF_QUOTATION.categories.includes(category)) throw ApiError.badRequest('Choose General, SC/ST or Pashupalak');
   const systemPrice = quotationPrice(STAFF_QUOTATION.village, category)!;
   const { policy } = STAFF_QUOTATION;
   return {

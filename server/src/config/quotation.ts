@@ -35,7 +35,7 @@ export const QUOTATION_CATEGORY_LABELS: Record<QuotationCategory, string> = {
  */
 export const QUOTATION_PRICES: Record<QuotationVillage, Partial<Record<QuotationCategory, number>>> = {
   PIPLAV: { GENERAL: 97290, SC_ST: 102695 },
-  OTHER: { GENERAL: 110000, PASHUPALAK: 108000 },
+  OTHER: { GENERAL: 110000, SC_ST: 102695, PASHUPALAK: 108000 },
 };
 
 export function quotationPrice(village: QuotationVillage, category: QuotationCategory): number | undefined {
@@ -48,7 +48,7 @@ export function quotationPrice(village: QuotationVillage, category: QuotationCat
  */
 const LEGACY_PACKAGE_PRICES: Record<QuotationVillage, Partial<Record<QuotationCategory, number>>> = {
   PIPLAV: { GENERAL: 97290, SC_ST: 102695 },
-  OTHER: { GENERAL: 110700, PASHUPALAK: 108700 },
+  OTHER: { GENERAL: 110700, SC_ST: 103395, PASHUPALAK: 108700 },
 };
 
 export function legacyPackagePrice(village: QuotationVillage, category: QuotationCategory): number | undefined {
@@ -68,7 +68,7 @@ export const QUOTATION_SYSTEM = {
  */
 export const STAFF_QUOTATION = {
   village: 'OTHER' as QuotationVillage,
-  categories: ['GENERAL', 'PASHUPALAK'] as QuotationCategory[],
+  categories: ['GENERAL', 'SC_ST', 'PASHUPALAK'] as QuotationCategory[],
   policy: { name: 'Policy', price: 700 },
   policyNotIncludedNote: 'Note: Policy is not included in this quotation.',
 };

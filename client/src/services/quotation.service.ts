@@ -20,6 +20,7 @@ export const QUOTATION_CATEGORY_OPTIONS: Record<
   ],
   OTHER: [
     { value: 'GENERAL', label: 'General', amount: 110000 },
+    { value: 'SC_ST', label: 'SC/ST', amount: 102695 },
     { value: 'PASHUPALAK', label: 'Pashupalak', amount: 108000 },
   ],
 };
@@ -124,7 +125,7 @@ export function staffQuotationTotal(category: QuotationCategory, policyIncluded:
 /** Old fixed package totals, only for previewing edits of quotations made before add-ons went on top. */
 export const LEGACY_PACKAGE_PRICES: Record<QuotationVillage, Partial<Record<QuotationCategory, number>>> = {
   PIPLAV: { GENERAL: 97290, SC_ST: 102695 },
-  OTHER: { GENERAL: 110700, PASHUPALAK: 108700 },
+  OTHER: { GENERAL: 110700, SC_ST: 103395, PASHUPALAK: 108700 },
 };
 
 export type UpdateQuotationInput = Partial<{

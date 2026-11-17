@@ -21,7 +21,7 @@ const staffSchema = z.object({
   customerName: z.string().trim().min(2, 'Name is required').regex(englishOnly, 'Please type the name in English'),
   address: z.string().trim().min(2, 'Address is required').regex(englishOnly, 'Please type the address in English'),
   mobileNumber: z.string().trim().regex(/^[0-9]{10}$/, 'Enter a valid 10-digit mobile number'),
-  category: z.enum(['GENERAL', 'PASHUPALAK']),
+  category: z.enum(['GENERAL', 'SC_ST', 'PASHUPALAK']),
   policyIncluded: z.boolean(),
 });
 type StaffForm = z.infer<typeof staffSchema>;

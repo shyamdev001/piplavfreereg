@@ -39,13 +39,13 @@ describe('Staff quotations (Other village, policy tick)', () => {
     expect(pdf.status).toBe(200);
   });
 
-  it('keeps staff to Other village, General/Pashupalak, no add-ons, own quotations only', async () => {
+  it('keeps staff to Other village, General, SC/ST or Pashupalak, no add-ons, own quotations only', async () => {
     const { cookie } = await staffCookie();
     const { cookie: other } = await staffCookie();
     const post = (body: object) => request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, ...body });
 
     expect((await post({ village: 'PIPLAV', category: 'GENERAL' })).status).toBe(403);
-    expect((await post({ category: 'SC_ST' })).status).toBe(400);
+    expect((await post({ category: 'SC_ST' })).body.quotation.amount).toBe(102695 + 700);
     expect((await post({ category: 'GENERAL', extras: [{ id: '507f1f77bcf86cd799439011', price: 10 }] })).status).toBe(400);
     const mine = await post({ village: 'OTHER', category: 'GENERAL' });
     expect(mine.status).toBe(201);
