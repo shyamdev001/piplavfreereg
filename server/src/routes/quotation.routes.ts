@@ -4,6 +4,7 @@ import { validate } from '../middleware/validate.middleware';
 import { UserRole } from '../types/enums';
 import {
   createQuotationSchema,
+  createPackageQuotationSchema,
   listQuotationsQuerySchema,
   quotationExtraSchema,
   updateQuotationExtraSchema,
@@ -13,6 +14,7 @@ import {
 } from '../validators/quotation.validators';
 import {
   createQuotation,
+  createPackageQuotation,
   createQuotationExtra,
   deleteQuotation,
   deleteQuotationExtra,
@@ -48,6 +50,7 @@ router.get('/history/export', historyReaders, validate({ query: quotationHistory
 // Quotation users, staff and admins make and edit quotations; viewers can see and download them.
 router.get('/', anyQuotationRole, validate({ query: listQuotationsQuerySchema }), listQuotations);
 router.get('/:id/pdf', anyQuotationRole, validate({ params: idParamsSchema }), downloadQuotationPdf);
+router.post('/package', quotationCreators, validate({ body: createPackageQuotationSchema }), createPackageQuotation);
 router.post('/', quotationCreators, validate({ body: createQuotationSchema }), createQuotation);
 router.patch('/:id', quotationMakers, validate({ params: idParamsSchema, body: updateQuotationSchema }), updateQuotation);
 router.delete('/:id', requireRole(UserRole.ADMIN), validate({ params: idParamsSchema }), deleteQuotation);

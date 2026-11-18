@@ -1,5 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
-import { QuotationCategory, QuotationVillage } from '../config/quotation';
+import { PackageBrand, QuotationCategory, QuotationVillage } from '../config/quotation';
 
 /** Add-on copied onto the quotation, so later price changes don't alter it. */
 export interface IQuotationLineExtra {
@@ -17,11 +17,20 @@ export interface IQuotation extends Document {
   address: string;
   mobileNumber: string;
   village: QuotationVillage;
-  /** STANDARD: Mukt's form (Piplav/Other, add-ons). STAFF: Other village with the fixed policy tick. */
-  kind: 'STANDARD' | 'STAFF';
+  /**
+   * STANDARD: Mukt's 2.18 kW form (Piplav/Other, add-ons). STAFF: 2.18 kW Other village
+   * with the policy tick. PACKAGE: bigger APS/Adani/Waaree system, no village or category.
+   */
+  kind: 'STANDARD' | 'STAFF' | 'PACKAGE';
   /** STAFF quotations only: false prints the "policy not included" note. */
   policyIncluded?: boolean;
-  category: QuotationCategory;
+  /** Missing on PACKAGE quotations. */
+  category?: QuotationCategory;
+  /** PACKAGE quotations only. */
+  brand?: PackageBrand;
+  panelCount?: number;
+  /** Panel type id within the company, e.g. MONO_540 or TOPCON_610. */
+  panelType?: string;
   /** Price of the 2.18 kW system alone (missing on quotations made before add-ons existed). */
   basePrice?: number;
   /** System row on the PDF. */
@@ -49,9 +58,18 @@ const quotationSchema = new Schema<IQuotation>(
     mobileNumber: { type: String, required: true, trim: true },
     // Quotations made before villages existed were all for Piplav.
     village: { type: String, enum: Object.values(QuotationVillage), default: QuotationVillage.PIPLAV },
-    kind: { type: String, enum: ['STANDARD', 'STAFF'], default: 'STANDARD' },
+    kind: { type: String, enum: ['STANDARD', 'STAFF', 'PACKAGE'], default: 'STANDARD' },
     policyIncluded: { type: Boolean },
-    category: { type: String, enum: Object.values(QuotationCategory), required: true },
+    category: {
+      type: String,
+      enum: Object.values(QuotationCategory),
+      required: function (this: IQuotation) {
+        return this.kind !== 'PACKAGE';
+      },
+    },
+    brand: { type: String, enum: Object.values(PackageBrand) },
+    panelCount: { type: Number },
+    panelType: { type: String },
     basePrice: { type: Number },
     systemPrice: { type: Number },
     pricingMode: { type: String, enum: ['ON_TOP'] },

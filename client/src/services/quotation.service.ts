@@ -38,11 +38,18 @@ export interface Quotation {
   address: string;
   mobileNumber: string;
   village?: QuotationVillage;
-  /** STANDARD: main form (Piplav/Other, add-ons). STAFF: other village with the policy tick. */
-  kind?: 'STANDARD' | 'STAFF';
+  /**
+   * STANDARD: 2.18 kW main form (Piplav/Other, add-ons). STAFF: 2.18 kW other village with
+   * the policy tick. PACKAGE: bigger APS / Adani / Waaree system.
+   */
+  kind?: 'STANDARD' | 'STAFF' | 'PACKAGE';
   /** Staff quotations: false = policy not included. */
   policyIncluded?: boolean;
-  category: QuotationCategory;
+  /** Missing on package quotations. */
+  category?: QuotationCategory;
+  brand?: PackageBrand;
+  panelCount?: number;
+  panelType?: string;
   basePrice?: number;
   systemPrice?: number;
   extras?: Array<{ name: string; description?: string; price: number; includedInPrice?: boolean }>;
@@ -112,6 +119,110 @@ export async function createQuotation(input: CreateQuotationInput): Promise<Quot
   return data.quotation;
 }
 
+// ---- Package quotations: APS / Adani / Waaree, 6-10 panels. Keep in step with the server config. ----
+
+export type PackageBrand = 'APS' | 'ADANI' | 'WAAREE';
+
+export interface PackageVariant {
+  id: string;
+  label: string;
+  panelWatt: number;
+  prices: Record<number, number>;
+}
+
+/** Two panel types per company; the first is the default. */
+export const PACKAGE_BRANDS: Record<PackageBrand, { label: string; variants: PackageVariant[] }> = {
+  APS: {
+    label: 'APS',
+    variants: [
+      {
+        id: 'TOPCON_550',
+        label: 'Mono Bifacial 550W',
+        panelWatt: 550,
+        prices: { 6: 162000, 7: 182000, 8: 209000, 9: 232000, 10: 260000 },
+      },
+      {
+        id: 'TOPCON_600',
+        label: 'TOPCon 600W',
+        panelWatt: 600,
+        prices: { 6: 166000, 7: 187000, 8: 214000, 9: 238000, 10: 265000 },
+      },
+    ],
+  },
+  ADANI: {
+    label: 'Adani',
+    variants: [
+      {
+        id: 'MONO_540',
+        label: 'Mono Bifacial 540W',
+        panelWatt: 540,
+        prices: { 6: 166000, 7: 198000, 8: 226000, 9: 249000, 10: 280000 },
+      },
+      {
+        id: 'TOPCON_610',
+        label: 'TOPCon 610W',
+        panelWatt: 610,
+        prices: { 6: 184000, 7: 214900, 8: 240600, 9: 273000, 10: 297900 },
+      },
+    ],
+  },
+  WAAREE: {
+    label: 'Waaree',
+    variants: [
+      {
+        id: 'MONO_540',
+        label: 'Mono Bifacial 540W',
+        panelWatt: 540,
+        prices: { 6: 164000, 7: 186000, 8: 212000, 9: 238700, 10: 265600 },
+      },
+      {
+        id: 'TOPCON_580',
+        label: 'TOPCon 580W',
+        panelWatt: 580,
+        prices: { 6: 180000, 7: 210000, 8: 235000, 9: 265500, 10: 290600 },
+      },
+    ],
+  },
+};
+export const PACKAGE_PANEL_COUNTS = [6, 7, 8, 9, 10];
+export const PACKAGE_INSURANCE_PRICE = 3000;
+export const PACKAGE_DONGLE_PRICE = 1700;
+
+/** The company's panel type, falling back to its first (default) one. */
+export function packageVariant(brand: PackageBrand, panelType?: string): PackageVariant {
+  const variants = PACKAGE_BRANDS[brand].variants;
+  return variants.find((v) => v.id === panelType) ?? variants[0];
+}
+
+export function packageSizeKw(brand: PackageBrand, panelType: string | undefined, panels: number): number {
+  return Math.round(panels * packageVariant(brand, panelType).panelWatt) / 1000;
+}
+
+/** e.g. "4.32 kW Waaree Mono Bifacial 540W" */
+export function packageLabel(brand: PackageBrand, panelType: string | undefined, panels: number): string {
+  return `${packageSizeKw(brand, panelType, panels).toFixed(2)} kW ${PACKAGE_BRANDS[brand].label} ${packageVariant(brand, panelType).label}`;
+}
+
+/** Insurance and the WiFi dongle are always part of the package total. */
+export function packageTotal(brand: PackageBrand, panelType: string | undefined, panels: number) {
+  const systemPrice = packageVariant(brand, panelType).prices[panels] ?? 0;
+  return { systemPrice, total: systemPrice + PACKAGE_INSURANCE_PRICE + PACKAGE_DONGLE_PRICE };
+}
+
+export interface CreatePackageQuotationInput {
+  customerName: string;
+  address: string;
+  mobileNumber: string;
+  brand: PackageBrand;
+  panelType: string;
+  panelCount: number;
+}
+
+export async function createPackageQuotation(input: CreatePackageQuotationInput): Promise<Quotation> {
+  const { data } = await api.post('/quotations/package', input);
+  return data.quotation;
+}
+
 /** Staff quotations: other village, Rs 700 policy ticked by default. Keep in step with the server config. */
 export const STAFF_POLICY_PRICE = 700;
 export const STAFF_CATEGORY_OPTIONS = QUOTATION_CATEGORY_OPTIONS.OTHER;
@@ -134,6 +245,9 @@ export type UpdateQuotationInput = Partial<{
   mobileNumber: string;
   category: QuotationCategory;
   policyIncluded: boolean;
+  brand: PackageBrand;
+  panelType: string;
+  panelCount: number;
 }>;
 
 export async function updateQuotation(id: string, input: UpdateQuotationInput): Promise<Quotation> {
@@ -143,7 +257,8 @@ export async function updateQuotation(id: string, input: UpdateQuotationInput): 
 
 // ---- History ----
 
-export type QuotationHistoryAction = 'QUOTATION_CREATED' | 'QUOTATION_UPDATED' | 'QUOTATION_DOWNLOADED' | 'QUOTATION_DELETED';
+export type QuotationHistoryAction =
+  'QUOTATION_CREATED' | 'QUOTATION_UPDATED' | 'QUOTATION_DOWNLOADED' | 'QUOTATION_DELETED';
 
 export interface QuotationHistoryEntry {
   _id: string;
@@ -167,7 +282,9 @@ export interface QuotationHistoryFilters {
   to?: string;
 }
 
-export async function listQuotationHistory(params: QuotationHistoryFilters & { page?: number; limit?: number }): Promise<{
+export async function listQuotationHistory(
+  params: QuotationHistoryFilters & { page?: number; limit?: number },
+): Promise<{
   logs: QuotationHistoryEntry[];
   pagination: PaginationMeta;
 }> {
@@ -185,7 +302,12 @@ export function quotationHistoryExportUrl(filters: QuotationHistoryFilters): str
   return `/api/quotations/history/export${query ? `?${query}` : ''}`;
 }
 
-export async function listQuotations(params: { search?: string; createdBy?: string; page?: number; limit?: number }): Promise<{
+export async function listQuotations(params: {
+  search?: string;
+  createdBy?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{
   quotations: Quotation[];
   pagination: PaginationMeta;
 }> {

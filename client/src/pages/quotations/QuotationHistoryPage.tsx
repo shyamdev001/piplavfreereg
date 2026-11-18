@@ -1,7 +1,18 @@
 import * as React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Download, Eye, History, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Eye,
+  History,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,10 +23,17 @@ import { getErrorMessage } from '@/lib/axios';
 import { cn } from '@/lib/utils';
 import * as agentService from '@/services/agent.service';
 import * as quotationService from '@/services/quotation.service';
-import type { QuotationHistoryAction, QuotationHistoryEntry, QuotationHistoryFilters } from '@/services/quotation.service';
+import type {
+  QuotationHistoryAction,
+  QuotationHistoryEntry,
+  QuotationHistoryFilters,
+} from '@/services/quotation.service';
 import type { Agent, PaginationMeta } from '@/types';
 
-const ACTION_META: Record<QuotationHistoryAction, { label: string; verb: string; icon: typeof Plus; tone: string }> = {
+const ACTION_META: Record<
+  QuotationHistoryAction,
+  { label: string; verb: string; icon: typeof Plus; tone: string }
+> = {
   QUOTATION_CREATED: { label: 'Created', verb: 'created', icon: Plus, tone: 'bg-primary/12 text-primary' },
   QUOTATION_UPDATED: { label: 'Edited', verb: 'edited', icon: Pencil, tone: 'bg-info/12 text-info' },
   QUOTATION_DOWNLOADED: {
@@ -24,7 +42,12 @@ const ACTION_META: Record<QuotationHistoryAction, { label: string; verb: string;
     icon: Eye,
     tone: 'bg-secondary text-secondary-foreground',
   },
-  QUOTATION_DELETED: { label: 'Deleted', verb: 'deleted', icon: Trash2, tone: 'bg-destructive/12 text-destructive' },
+  QUOTATION_DELETED: {
+    label: 'Deleted',
+    verb: 'deleted',
+    icon: Trash2,
+    tone: 'bg-destructive/12 text-destructive',
+  },
 };
 
 const ROLE_WORD: Record<string, string> = {
@@ -110,7 +133,9 @@ export function QuotationHistoryPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[1.75rem] font-extrabold tracking-tight text-foreground">Quotation History</h1>
-          <p className="text-sm text-muted-foreground">Who created, edited, downloaded or deleted each quotation, and when.</p>
+          <p className="text-sm text-muted-foreground">
+            Who created, edited, downloaded or deleted each quotation, and when.
+          </p>
         </div>
         <Button asChild variant="outline">
           <a href={quotationService.quotationHistoryExportUrl(filters)} rel="noopener">
@@ -143,7 +168,12 @@ export function QuotationHistoryPage() {
               aria-label="Search history"
             />
           </div>
-          <select className={selectClass} value={actorId} onChange={(e) => setActorId(e.target.value)} aria-label="Filter by person">
+          <select
+            className={selectClass}
+            value={actorId}
+            onChange={(e) => setActorId(e.target.value)}
+            aria-label="Filter by person"
+          >
             <option value="">Everyone</option>
             {people.map((p) => (
               <option key={p.id} value={p.id}>
@@ -215,7 +245,11 @@ export function QuotationHistoryPage() {
           ))}
         </div>
       ) : logs.length === 0 ? (
-        <EmptyState icon={<History className="h-6 w-6" />} title="Nothing here yet" description="Quotation actions will appear here." />
+        <EmptyState
+          icon={<History className="h-6 w-6" />}
+          title="Nothing here yet"
+          description="Quotation actions will appear here."
+        />
       ) : (
         <div className="space-y-2">
           {logs.map((log) => {
@@ -224,19 +258,31 @@ export function QuotationHistoryPage() {
             return (
               <Card key={log._id}>
                 <CardContent className="flex items-start gap-3 p-4">
-                  <span className={cn('mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full', meta?.tone)}>
+                  <span
+                    className={cn(
+                      'mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full',
+                      meta?.tone,
+                    )}
+                  >
                     <Icon className="h-4 w-4" />
                   </span>
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <p className="text-sm text-foreground">
                       <span className="font-bold">{log.actorName}</span>{' '}
-                      <span className="text-xs text-muted-foreground">({ROLE_WORD[log.actorRole] ?? log.actorRole})</span>{' '}
+                      <span className="text-xs text-muted-foreground">
+                        ({ROLE_WORD[log.actorRole] ?? log.actorRole})
+                      </span>{' '}
                       {meta?.verb ?? log.action}{' '}
                       <span className="font-mono-brand text-xs font-bold">{log.targetLabel}</span>
                     </p>
-                    {log.details && <p className="break-words text-xs text-muted-foreground">{log.details}</p>}
+                    {log.details && (
+                      <p className="break-words text-xs text-muted-foreground">{log.details}</p>
+                    )}
                   </div>
-                  <time className="flex-shrink-0 text-right text-xs font-medium text-muted-foreground" dateTime={log.createdAt}>
+                  <time
+                    className="flex-shrink-0 text-right text-xs font-medium text-muted-foreground"
+                    dateTime={log.createdAt}
+                  >
                     {formatWhen(log.createdAt)}
                   </time>
                 </CardContent>
@@ -255,7 +301,12 @@ export function QuotationHistoryPage() {
             <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
               <ChevronLeft className="h-4 w-4" /> Prev
             </Button>
-            <Button size="sm" variant="outline" disabled={page >= pagination.totalPages} onClick={() => setPage((p) => p + 1)}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= pagination.totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
               Next <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

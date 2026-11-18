@@ -19,6 +19,11 @@ import {
   QuotationVillage,
   quotationPrice,
   legacyPackagePrice,
+  PACKAGE_QUOTATION,
+  PackageBrand,
+  packageLabel,
+  packageSizeKw,
+  packageVariant,
 } from '../config/quotation';
 
 /**
@@ -89,7 +94,91 @@ function legacyStandardPricing(village: QuotationVillage, category: QuotationCat
   return { basePrice, systemPrice, amount: basePrice + sum(extras.filter((e) => !e.includedInPrice)) };
 }
 
+/**
+ * Bigger APS / Adani / Waaree systems. Insurance and the WiFi dongle are always part of
+ * the package: the total is panels + inverter + insurance + dongle, each on its own PDF row.
+ */
+function packagePricing(brand: PackageBrand, panelType: string | undefined, panelCount: number) {
+  const variant = packageVariant(brand, panelType);
+  if (!variant) throw ApiError.badRequest('This panel type is not available for that company');
+  const systemPrice = variant.prices[panelCount];
+  if (systemPrice === undefined) throw ApiError.badRequest('Choose 6 to 10 panels');
+  const { insurance, dongle } = PACKAGE_QUOTATION;
+  const extras = [
+    { ...insurance, includedInPrice: false },
+    { ...dongle, includedInPrice: false },
+  ];
+  return {
+    pricingMode: 'ON_TOP' as const,
+    brand,
+    panelType: variant.id,
+    panelCount,
+    systemSizeKw: packageSizeKw(variant, panelCount),
+    basePrice: systemPrice,
+    systemPrice,
+    extras,
+    amount: systemPrice + sum(extras),
+  };
+}
+
 const label = (q: Pick<IQuotation, 'quotationNumber' | 'customerName'>) => `${q.quotationNumber} - ${q.customerName}`;
+
+/** Short "what was quoted" text for the history. */
+function summary(q: IQuotation): string {
+  const what =
+    q.kind === 'PACKAGE' && q.brand
+      ? packageLabel(q.brand, q.panelType, q.panelCount ?? 0)
+      : q.category
+        ? QUOTATION_CATEGORY_LABELS[q.category]
+        : '';
+  const missing = q.policyIncluded === false ? 'policy not included' : '';
+  return [what, `Rs ${formatIndianAmount(q.amount)}`, missing].filter(Boolean).join(' · ');
+}
+
+function newQuotationBase(req: Request, now: Date) {
+  return {
+    quotationDate: now,
+    expiryDate: new Date(now.getTime() + QUOTATION_VALIDITY_DAYS * 24 * 60 * 60 * 1000),
+    createdBy: req.user!.id,
+    createdByName: req.user!.name,
+  };
+}
+
+async function auditCreated(req: Request, quotation: IQuotation) {
+  await recordAudit({
+    action: AuditAction.QUOTATION_CREATED,
+    actor: req.user!,
+    targetType: 'Quotation',
+    targetId: String(quotation._id),
+    targetLabel: label(quotation),
+    details: summary(quotation),
+    req,
+  });
+}
+
+/** Everyone who can make quotations (including viewers) can make these. */
+export const createPackageQuotation = catchAsync(async (req: Request, res: Response) => {
+  const { customerName, address, mobileNumber, brand, panelType, panelCount } = req.body as {
+    customerName: string;
+    address: string;
+    mobileNumber: string;
+    brand: PackageBrand;
+    panelType?: string;
+    panelCount: number;
+  };
+  const now = new Date();
+  const quotation = await Quotation.create({
+    kind: 'PACKAGE',
+    ...packagePricing(brand, panelType, panelCount),
+    quotationNumber: await nextQuotationNumber(now),
+    customerName,
+    address,
+    mobileNumber,
+    ...newQuotationBase(req, now),
+  });
+  await auditCreated(req, quotation);
+  res.status(201).json({ quotation });
+});
 
 export const createQuotation = catchAsync(async (req: Request, res: Response) => {
   const { customerName, address, mobileNumber, village, category, policyIncluded, extras: picked } = req.body as {
@@ -137,24 +226,9 @@ export const createQuotation = catchAsync(async (req: Request, res: Response) =>
     mobileNumber,
     category,
     systemSizeKw: QUOTATION_SYSTEM.sizeKw,
-    quotationDate: now,
-    expiryDate: new Date(now.getTime() + QUOTATION_VALIDITY_DAYS * 24 * 60 * 60 * 1000),
-    createdBy: req.user!.id,
-    createdByName: req.user!.name,
+    ...newQuotationBase(req, now),
   });
-
-  await recordAudit({
-    action: AuditAction.QUOTATION_CREATED,
-    actor: req.user!,
-    targetType: 'Quotation',
-    targetId: String(quotation._id),
-    targetLabel: label(quotation),
-    details: `${QUOTATION_CATEGORY_LABELS[quotation.category]} · Rs ${formatIndianAmount(quotation.amount)}${
-      quotation.policyIncluded === false ? ' · policy not included' : ''
-    }`,
-    req,
-  });
-
+  await auditCreated(req, quotation);
   res.status(201).json({ quotation });
 });
 
@@ -164,7 +238,9 @@ function describe(q: IQuotation): Record<string, string> {
     Name: q.customerName,
     Address: q.address,
     Mobile: q.mobileNumber,
-    Category: QUOTATION_CATEGORY_LABELS[q.category],
+    ...(q.kind === 'PACKAGE' && q.brand
+      ? { System: packageLabel(q.brand, q.panelType, q.panelCount ?? 0) }
+      : { Category: q.category ? QUOTATION_CATEGORY_LABELS[q.category] : '' }),
     ...(q.kind === 'STAFF' ? { Policy: q.policyIncluded === false ? 'Not included' : 'Included' } : {}),
     Total: `Rs ${formatIndianAmount(q.amount)}`,
   };
@@ -178,9 +254,16 @@ export const updateQuotation = catchAsync(async (req: Request, res: Response) =>
     mobileNumber: string;
     category: QuotationCategory;
     policyIncluded: boolean;
+    brand: PackageBrand;
+    panelType: string;
+    panelCount: number;
   }>;
   if (body.policyIncluded !== undefined && quotation.kind !== 'STAFF') {
     throw ApiError.badRequest('Only staff quotations have the policy tick');
+  }
+  const packageFields = [body.brand, body.panelType, body.panelCount];
+  if (quotation.kind === 'PACKAGE' ? body.category !== undefined : packageFields.some((f) => f !== undefined)) {
+    throw ApiError.badRequest('That change does not apply to this quotation');
   }
 
   const before = describe(quotation);
@@ -189,8 +272,13 @@ export const updateQuotation = catchAsync(async (req: Request, res: Response) =>
   if (body.mobileNumber !== undefined) quotation.mobileNumber = body.mobileNumber;
 
   // Price is always recalculated on the server from the (possibly new) choices.
-  const category = body.category ?? quotation.category;
-  if (quotation.kind === 'STAFF') {
+  const category = body.category ?? quotation.category!;
+  if (quotation.kind === 'PACKAGE') {
+    const brand = body.brand ?? quotation.brand!;
+    // A new company without a panel type gets that company's default type.
+    const panelType = body.panelType ?? (brand === quotation.brand ? quotation.panelType : undefined);
+    quotation.set(packagePricing(brand, panelType, body.panelCount ?? quotation.panelCount!));
+  } else if (quotation.kind === 'STAFF') {
     const included = body.policyIncluded ?? quotation.policyIncluded ?? true;
     const p = staffPricing(category, included);
     quotation.set({ ...p, policyIncluded: included });
@@ -198,7 +286,7 @@ export const updateQuotation = catchAsync(async (req: Request, res: Response) =>
     const pricing = quotation.pricingMode === 'ON_TOP' ? standardPricing : legacyStandardPricing;
     quotation.set(pricing(quotation.village, category, quotation.extras));
   }
-  quotation.category = category;
+  if (quotation.kind !== 'PACKAGE') quotation.category = category;
 
   const after = describe(quotation);
   const changes = Object.keys(after)

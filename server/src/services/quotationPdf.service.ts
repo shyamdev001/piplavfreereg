@@ -8,7 +8,9 @@ import {
   QUOTATION_SELLER,
   QUOTATION_SYSTEM,
   STAFF_QUOTATION,
+  PackageBrand,
   QuotationCategory,
+  packageSystemText,
 } from '../config/quotation';
 import { formatIndianAmount, rupeesInWords } from '../utils/amountInWords';
 
@@ -17,7 +19,15 @@ export interface QuotationPdfData {
   customerName: string;
   address: string;
   mobileNumber: string;
-  category: QuotationCategory;
+  /** Missing on package quotations (no category line is printed). */
+  category?: QuotationCategory;
+  /** Package quotations: brand and panel count give row 1's title and description. */
+  kind?: string;
+  brand?: PackageBrand;
+  panelCount?: number;
+  panelType?: string;
+  /** Printed as "Created by" - the person who made the quotation. */
+  createdByName?: string;
   /** System price alone; older quotations without it use `amount`. */
   basePrice?: number;
   /** System row price after included add-ons are taken out. */
@@ -196,13 +206,13 @@ export async function buildQuotationPdf(data: QuotationPdfData): Promise<Buffer>
   let billTop = infoTop + 22 + h;
   billTop += w.paragraph(data.address, col2, billTop, 8.5, 150, { color: MUTED });
   w.labelValue('Mobile:', data.mobileNumber, col2, billTop + 3, 8.5);
-  w.labelValue('Category:', QUOTATION_CATEGORY_LABELS[data.category], col2, billTop + 16, 8.5);
+  if (data.category) w.labelValue('Category:', QUOTATION_CATEGORY_LABELS[data.category], col2, billTop + 16, 8.5);
 
   const meta: Array<[string, string]> = [
     ['Date:', formatDate(data.quotationDate)],
     ['Expiry Date:', formatDate(data.expiryDate)],
     ['Estimate#:', data.quotationNumber],
-    ['Created by:', QUOTATION_SELLER.createdBy],
+    ['Created by:', data.createdByName || QUOTATION_SELLER.createdBy],
     ['Contact:', QUOTATION_SELLER.contact],
   ];
   meta.forEach(([label, value], i) => w.labelValue(label, value, col3, infoTop + i * 17, 8.5));
@@ -227,8 +237,12 @@ export async function buildQuotationPdf(data: QuotationPdfData): Promise<Buffer>
   w.textRight('TOTAL', tableRight - 8, tableTop + 8, 8.5, head);
 
   // Row 1 is the solar system; each ticked add-on (Insurance, WiFi dongle, ...) follows.
+  const system =
+    data.kind === 'PACKAGE' && data.brand && data.panelCount
+      ? packageSystemText(data.brand, data.panelType, data.panelCount)
+      : { title: QUOTATION_SYSTEM.title, description: QUOTATION_SYSTEM.description };
   const items = [
-    { title: QUOTATION_SYSTEM.title, description: QUOTATION_SYSTEM.description, price: data.systemPrice ?? data.basePrice ?? data.amount },
+    { ...system, price: data.systemPrice ?? data.basePrice ?? data.amount },
     ...(data.extras ?? []).map((e) => ({ title: e.name, description: e.description, price: e.price })),
   ];
   let rowBottom = tableTop + 24;
@@ -269,11 +283,10 @@ export async function buildQuotationPdf(data: QuotationPdfData): Promise<Buffer>
   w.line(totalsLeft - 18, totalsTop - 6, totalsLeft - 18, grandTop + 22);
   const words = rupeesInWords(data.amount);
   const wordsH = w.paragraph(words, tableLeft + 6, totalsTop + 36, 8.5, totalsLeft - tableLeft - 40, { color: ORANGE });
-  if (data.policyIncluded === false) {
-    w.paragraph(STAFF_QUOTATION.policyNotIncludedNote, tableLeft + 6, totalsTop + 36 + wordsH + 10, 9, totalsLeft - tableLeft - 40, {
-      bold: true,
-      color: rgb(0.75, 0.1, 0.1),
-    });
+  const missing = [data.policyIncluded === false ? STAFF_QUOTATION.policyNotIncludedNote : ''].filter(Boolean);
+  let noteTop = totalsTop + 36 + wordsH + 10;
+  for (const note of missing) {
+    noteTop += w.paragraph(note, tableLeft + 6, noteTop, 9, totalsLeft - tableLeft - 40, { bold: true, color: rgb(0.75, 0.1, 0.1) }) + 2;
   }
 
   // ---- Notes / Bank / Signature ----

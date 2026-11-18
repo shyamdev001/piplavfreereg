@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { QuotationCategory, QuotationVillage } from '../config/quotation';
+import { PACKAGE_PANEL_TYPES, PackageBrand, QuotationCategory, QuotationVillage } from '../config/quotation';
 
 // The PDF uses a standard Latin font, so Gujarati/Hindi script can't be printed.
 const ENGLISH_ONLY = /^[\x20-\x7E\r\n]*$/;
@@ -29,6 +29,19 @@ export const createQuotationSchema = z.object({
     .default([]),
 });
 
+const panelCount = z.coerce.number().int().min(6, 'Choose 6 to 10 panels').max(10, 'Choose 6 to 10 panels');
+
+/** Bigger APS / Adani / Waaree systems: same price for every village and category. */
+export const createPackageQuotationSchema = z.object({
+  customerName: englishText('Name', 120),
+  address: englishText('Address', 300),
+  mobileNumber: z.string().trim().regex(/^[0-9]{10}$/, 'Mobile must be a 10-digit number'),
+  brand: z.nativeEnum(PackageBrand),
+  // Left out = the company's first panel type. Checked against the company in the controller.
+  panelType: z.enum(PACKAGE_PANEL_TYPES).optional(),
+  panelCount,
+});
+
 export const quotationExtraSchema = z.object({
   name: englishText('Name', 80),
   description: z.string().trim().max(200).regex(ENGLISH_ONLY, 'Description: please type in English letters').optional(),
@@ -49,6 +62,10 @@ export const updateQuotationSchema = z
     mobileNumber: z.string().trim().regex(/^[0-9]{10}$/, 'Mobile must be a 10-digit number'),
     category: z.nativeEnum(QuotationCategory),
     policyIncluded: z.boolean(),
+    // Package quotations only.
+    brand: z.nativeEnum(PackageBrand),
+    panelType: z.enum(PACKAGE_PANEL_TYPES),
+    panelCount,
   })
   .partial();
 

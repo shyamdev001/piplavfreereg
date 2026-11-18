@@ -110,7 +110,8 @@ export function AddOnsManager({ extras, onChanged }: { extras: QuotationExtra[];
     }
     // An empty description clears it.
     const payload = { ...input, description: input.description ?? '' };
-    if (await run(() => quotationService.updateExtra(extra._id, payload), 'Add-on updated.')) setEditingId(null);
+    if (await run(() => quotationService.updateExtra(extra._id, payload), 'Add-on updated.'))
+      setEditingId(null);
   };
 
   const handleDelete = (extra: QuotationExtra) => {
@@ -130,8 +131,9 @@ export function AddOnsManager({ extras, onChanged }: { extras: QuotationExtra[];
         <div>
           <h2 className="text-base font-extrabold text-foreground">Add-ons</h2>
           <p className="text-xs text-muted-foreground">
-            Optional items like a policy. The amount here is only the default and can be changed on each quotation
-            (leave it empty to type it every time). The add-on amount is added on top of the panels + inverter price.
+            Optional items like a policy. The amount here is only the default and can be changed on each
+            quotation (leave it empty to type it every time). The add-on amount is added on top of the panels
+            + inverter price.
           </p>
         </div>
 
@@ -153,12 +155,17 @@ export function AddOnsManager({ extras, onChanged }: { extras: QuotationExtra[];
               ) : (
                 <li
                   key={extra._id}
-                  className={cn('flex items-center gap-1.5 rounded-xl border border-border/70 p-3', !extra.active && 'opacity-60')}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-xl border border-border/70 p-3',
+                    !extra.active && 'opacity-60',
+                  )}
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-foreground">{extra.name}</p>
                     <p className="font-mono-brand text-xs tabular-nums text-muted-foreground">
-                      {extra.price > 0 ? `Default ${formatCurrency(extra.price)}` : 'Amount typed on each quotation'}
+                      {extra.price > 0
+                        ? `Default ${formatCurrency(extra.price)}`
+                        : 'Amount typed on each quotation'}
                       {!extra.active && ' · hidden'}
                     </p>
                   </div>
@@ -171,7 +178,14 @@ export function AddOnsManager({ extras, onChanged }: { extras: QuotationExtra[];
                   >
                     {extra.active ? 'Hide' : 'Show'}
                   </Button>
-                  <Button size="sm" variant="ghost" aria-label={`Edit ${extra.name}`} title="Edit" disabled={busy} onClick={() => startEdit(extra)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Edit ${extra.name}`}
+                    title="Edit"
+                    disabled={busy}
+                    onClick={() => startEdit(extra)}
+                  >
                     <Pencil className="h-4 w-4" />
                   </Button>
                   <Button

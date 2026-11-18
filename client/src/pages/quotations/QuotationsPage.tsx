@@ -3,7 +3,18 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Download, Eye, FileText, History, Pencil, Search, Trash2, ChevronLeft, ChevronRight, Sun } from 'lucide-react';
+import {
+  Download,
+  Eye,
+  FileText,
+  History,
+  Pencil,
+  Search,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Sun,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +32,7 @@ import {
   QUOTATION_CATEGORY_LABEL,
   QUOTATION_CATEGORY_OPTIONS,
   QUOTATION_VILLAGE_LABEL,
+  packageLabel,
   type Quotation,
   type QuotationExtra,
   type QuotationVillage,
@@ -28,6 +40,7 @@ import {
 import type { PaginationMeta } from '@/types';
 import { AddOnsManager } from './AddOnsManager';
 import { StaffQuotationCard } from './StaffQuotationCard';
+import { PackageQuotationCard } from './PackageQuotationCard';
 import { EditQuotationDialog } from './EditQuotationDialog';
 import * as agentService from '@/services/agent.service';
 import type { Agent } from '@/types';
@@ -36,9 +49,20 @@ import type { Agent } from '@/types';
 const englishOnly = /^[\x20-\x7E\r\n]*$/;
 
 const quotationSchema = z.object({
-  customerName: z.string().trim().min(2, 'Name is required').regex(englishOnly, 'Please type the name in English'),
-  address: z.string().trim().min(2, 'Address is required').regex(englishOnly, 'Please type the address in English'),
-  mobileNumber: z.string().trim().regex(/^[0-9]{10}$/, 'Enter a valid 10-digit mobile number'),
+  customerName: z
+    .string()
+    .trim()
+    .min(2, 'Name is required')
+    .regex(englishOnly, 'Please type the name in English'),
+  address: z
+    .string()
+    .trim()
+    .min(2, 'Address is required')
+    .regex(englishOnly, 'Please type the address in English'),
+  mobileNumber: z
+    .string()
+    .trim()
+    .regex(/^[0-9]{10}$/, 'Enter a valid 10-digit mobile number'),
   village: z.enum(['PIPLAV', 'OTHER']),
   category: z.enum(['GENERAL', 'SC_ST', 'PASHUPALAK']),
 });
@@ -60,7 +84,9 @@ function NewQuotationCard({
 
   // Drop ticks for add-ons the admin has just removed or switched off.
   React.useEffect(() => {
-    setPicked((current) => Object.fromEntries(Object.entries(current).filter(([id]) => offered.some((e) => e._id === id))));
+    setPicked((current) =>
+      Object.fromEntries(Object.entries(current).filter(([id]) => offered.some((e) => e._id === id))),
+    );
   }, [offered]);
 
   const toggleExtra = (extra: QuotationExtra) =>
@@ -111,7 +137,13 @@ function NewQuotationCard({
       });
       quotationService.downloadQuotationPdf(quotation._id);
       toast.success(`Quotation ${quotation.quotationNumber} created. Downloading PDF...`);
-      reset({ customerName: '', address: '', mobileNumber: '', village: values.village, category: values.category });
+      reset({
+        customerName: '',
+        address: '',
+        mobileNumber: '',
+        village: values.village,
+        category: values.category,
+      });
       setPicked({});
       onCreated();
     } catch (err) {
@@ -131,13 +163,33 @@ function NewQuotationCard({
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <FormField label="Customer Name" htmlFor="customerName" required error={errors.customerName?.message}>
-            <Input id="customerName" autoComplete="off" placeholder="e.g. Hiteshbhai Patel" {...register('customerName')} />
+          <FormField
+            label="Customer Name"
+            htmlFor="customerName"
+            required
+            error={errors.customerName?.message}
+          >
+            <Input
+              id="customerName"
+              autoComplete="off"
+              placeholder="e.g. Hiteshbhai Patel"
+              {...register('customerName')}
+            />
           </FormField>
           <FormField label="Address" htmlFor="address" required error={errors.address?.message}>
-            <Textarea id="address" rows={3} placeholder="House, street, village, district" {...register('address')} />
+            <Textarea
+              id="address"
+              rows={3}
+              placeholder="House, street, village, district"
+              {...register('address')}
+            />
           </FormField>
-          <FormField label="Mobile Number" htmlFor="mobileNumber" required error={errors.mobileNumber?.message}>
+          <FormField
+            label="Mobile Number"
+            htmlFor="mobileNumber"
+            required
+            error={errors.mobileNumber?.message}
+          >
             <Input id="mobileNumber" inputMode="numeric" maxLength={10} {...register('mobileNumber')} />
           </FormField>
 
@@ -148,7 +200,12 @@ function NewQuotationCard({
                   key={value}
                   className="flex cursor-pointer items-center gap-2 rounded-xl border border-border/70 p-3 text-sm font-bold transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
                 >
-                  <input type="radio" value={value} className="accent-[hsl(var(--primary))]" {...register('village')} />
+                  <input
+                    type="radio"
+                    value={value}
+                    className="accent-[hsl(var(--primary))]"
+                    {...register('village')}
+                  />
                   {QUOTATION_VILLAGE_LABEL[value]}
                 </label>
               ))}
@@ -163,10 +220,17 @@ function NewQuotationCard({
                   className="flex cursor-pointer flex-col gap-0.5 rounded-xl border border-border/70 p-3 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
                 >
                   <span className="flex items-center gap-2 font-bold">
-                    <input type="radio" value={option.value} className="accent-[hsl(var(--primary))]" {...register('category')} />
+                    <input
+                      type="radio"
+                      value={option.value}
+                      className="accent-[hsl(var(--primary))]"
+                      {...register('category')}
+                    />
                     {option.label}
                   </span>
-                  <span className="font-mono-brand text-xs tabular-nums text-muted-foreground">{formatCurrency(option.amount)}</span>
+                  <span className="font-mono-brand text-xs tabular-nums text-muted-foreground">
+                    {formatCurrency(option.amount)}
+                  </span>
                 </label>
               ))}
             </div>
@@ -194,12 +258,17 @@ function NewQuotationCard({
                         />
                         <span className="min-w-0 flex-1">
                           <span className="block font-bold">{extra.name}</span>
-                          {extra.description && <span className="block text-xs text-muted-foreground">{extra.description}</span>}
+                          {extra.description && (
+                            <span className="block text-xs text-muted-foreground">{extra.description}</span>
+                          )}
                         </span>
                       </label>
                       {isPicked && (
                         <div className="flex items-center gap-2 px-3 pb-3">
-                          <label htmlFor={`extra-${extra._id}`} className="flex-1 text-xs font-semibold text-muted-foreground">
+                          <label
+                            htmlFor={`extra-${extra._id}`}
+                            className="flex-1 text-xs font-semibold text-muted-foreground"
+                          >
                             {extra.name} amount (₹)
                           </label>
                           <Input
@@ -207,7 +276,10 @@ function NewQuotationCard({
                             inputMode="numeric"
                             value={picked[extra._id]}
                             onChange={(e) =>
-                              setPicked((current) => ({ ...current, [extra._id]: e.target.value.replace(/[^0-9]/g, '') }))
+                              setPicked((current) => ({
+                                ...current,
+                                [extra._id]: e.target.value.replace(/[^0-9]/g, ''),
+                              }))
                             }
                             placeholder="Amount"
                             className="h-9 w-32 text-right font-mono-brand tabular-nums"
@@ -238,7 +310,9 @@ function NewQuotationCard({
             )}
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-muted-foreground">Quotation total</span>
-              <span className="font-mono-brand text-lg font-extrabold tabular-nums text-primary">{formatCurrency(amount)}</span>
+              <span className="font-mono-brand text-lg font-extrabold tabular-nums text-primary">
+                {formatCurrency(amount)}
+              </span>
             </div>
           </div>
 
@@ -267,6 +341,8 @@ export function QuotationsPage() {
   const canSeeHistory = role === 'ADMIN' || role === 'VIEWER';
   const canDelete = role === 'ADMIN';
 
+  // Which create form is shown: the 2.18 kW one or the bigger APS / Adani / Waaree systems.
+  const [formTab, setFormTab] = React.useState<'SMALL' | 'PACKAGE'>('SMALL');
   const [quotations, setQuotations] = React.useState<Quotation[]>([]);
   const [pagination, setPagination] = React.useState<PaginationMeta | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -289,7 +365,12 @@ export function QuotationsPage() {
   const load = React.useCallback(() => {
     setLoading(true);
     quotationService
-      .listQuotations({ search: debouncedSearch || undefined, createdBy: createdBy || undefined, page, limit: 20 })
+      .listQuotations({
+        search: debouncedSearch || undefined,
+        createdBy: createdBy || undefined,
+        page,
+        limit: 20,
+      })
       .then((data) => {
         setQuotations(data.quotations);
         setPagination(data.pagination);
@@ -339,14 +420,44 @@ export function QuotationsPage() {
               ? 'Piplav quotations - fill in the customer details and download the PDF. All quotations are listed here.'
               : canCreate
                 ? 'Fill in the customer details - the PDF is made from the Piplav template.'
-              : 'All quotations made so far.'}
+                : 'All quotations made so far.'}
         </p>
       </div>
 
       <div className={cn('grid gap-5', canCreate && 'lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]')}>
         {canCreate && (
           <div className="space-y-5">
-            {isStaff ? (
+            <div
+              role="tablist"
+              aria-label="Quotation type"
+              className="grid grid-cols-2 gap-1 rounded-xl border border-border/70 bg-muted/40 p-1"
+            >
+              {(
+                [
+                  ['SMALL', '2.18 kW'],
+                  ['PACKAGE', 'APS / Adani / Waaree'],
+                ] as const
+              ).map(([value, text]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={formTab === value}
+                  onClick={() => setFormTab(value)}
+                  className={cn(
+                    'rounded-lg px-3 py-2 text-sm font-bold transition-colors',
+                    formTab === value
+                      ? 'bg-background text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+            {formTab === 'PACKAGE' ? (
+              <PackageQuotationCard onCreated={() => (page === 1 ? load() : setPage(1))} />
+            ) : isStaff ? (
               <StaffQuotationCard onCreated={() => (page === 1 ? load() : setPage(1))} />
             ) : (
               <NewQuotationCard
@@ -355,7 +466,9 @@ export function QuotationsPage() {
                 onCreated={() => (page === 1 ? load() : setPage(1))}
               />
             )}
-            {role === 'ADMIN' && <AddOnsManager extras={extras} onChanged={loadExtras} />}
+            {role === 'ADMIN' && formTab === 'SMALL' && (
+              <AddOnsManager extras={extras} onChanged={loadExtras} />
+            )}
           </div>
         )}
 
@@ -407,15 +520,22 @@ export function QuotationsPage() {
                       {q.quotationNumber} · {q.mobileNumber}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDate(q.createdAt)} · {QUOTATION_VILLAGE_LABEL[q.village ?? 'PIPLAV']} ·{' '}
-                      {QUOTATION_CATEGORY_LABEL[q.category]}
-                      {q.extras?.length ? ` + ${q.extras.map((e) => e.name).join(', ')}` : ''} · by {q.createdByName}
+                      {formatDate(q.createdAt)} ·{' '}
+                      {q.kind === 'PACKAGE' && q.brand && q.panelCount
+                        ? packageLabel(q.brand, q.panelType, q.panelCount)
+                        : `2.18 kW · ${QUOTATION_VILLAGE_LABEL[q.village ?? 'PIPLAV']} · ${q.category ? QUOTATION_CATEGORY_LABEL[q.category] : ''}`}
+                      {q.extras?.length ? ` + ${q.extras.map((e) => e.name).join(', ')}` : ''} · by{' '}
+                      {q.createdByName}
                       {q.updatedByName ? ` · edited by ${q.updatedByName}` : ''}
                     </p>
-                    {q.policyIncluded === false && <p className="text-xs font-bold text-destructive">Policy not included</p>}
+                    {q.policyIncluded === false && (
+                      <p className="text-xs font-bold text-destructive">Policy not included</p>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono-brand text-sm font-extrabold tabular-nums text-primary">{formatCurrency(q.amount)}</span>
+                    <span className="font-mono-brand text-sm font-extrabold tabular-nums text-primary">
+                      {formatCurrency(q.amount)}
+                    </span>
                     {canEdit && (
                       <Button size="sm" variant="outline" onClick={() => setEditing(q)}>
                         <Pencil className="h-3.5 w-3.5" /> Edit
@@ -432,7 +552,13 @@ export function QuotationsPage() {
                       </a>
                     </Button>
                     {canSeeHistory && (
-                      <Button asChild size="sm" variant="ghost" title="History" aria-label="Quotation history">
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="ghost"
+                        title="History"
+                        aria-label="Quotation history"
+                      >
                         <Link
                           to={`/quotations/history?quotation=${q._id}&label=${encodeURIComponent(`${q.quotationNumber} - ${q.customerName}`)}`}
                         >
@@ -441,7 +567,13 @@ export function QuotationsPage() {
                       </Button>
                     )}
                     {canDelete && (
-                      <Button size="sm" variant="ghost" title="Delete" aria-label="Delete quotation" onClick={() => handleDelete(q)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title="Delete"
+                        aria-label="Delete quotation"
+                        onClick={() => handleDelete(q)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
@@ -457,10 +589,20 @@ export function QuotationsPage() {
                 Page {pagination.page} of {pagination.totalPages} · {pagination.total} quotations
               </p>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
                   <ChevronLeft className="h-4 w-4" /> Prev
                 </Button>
-                <Button size="sm" variant="outline" disabled={page >= pagination.totalPages} onClick={() => setPage((p) => p + 1)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={page >= pagination.totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
                   Next <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
