@@ -58,12 +58,12 @@ async function findAccessible(req: Request) {
 const sum = (items: Array<{ price: number }>) => items.reduce((total, e) => total + e.price, 0);
 
 /**
- * Staff quotations: Other village, policy ticked by default. Ticked, the policy is
- * added on top of the system price; unticked, it is left out.
+ * Staff quotations: Other village or KDCC Employee, policy ticked by default. Ticked, the
+ * policy is added on top of the system price; unticked, it is left out.
  */
-function staffPricing(category: QuotationCategory, policyIncluded: boolean) {
-  if (!STAFF_QUOTATION.categories.includes(category)) throw ApiError.badRequest('Choose General, SC/ST or Pashupalak');
-  const systemPrice = quotationPrice(STAFF_QUOTATION.village, category)!;
+function staffPricing(village: QuotationVillage, category: QuotationCategory, policyIncluded: boolean) {
+  const systemPrice = quotationPrice(village, category);
+  if (systemPrice === undefined) throw ApiError.badRequest('This category is not available for the selected village');
   const { policy } = STAFF_QUOTATION;
   return {
     pricingMode: 'ON_TOP' as const,
@@ -193,11 +193,14 @@ export const createQuotation = catchAsync(async (req: Request, res: Response) =>
 
   let fields: Partial<IQuotation>;
   if (req.user!.role === UserRole.QUOTATION_STAFF) {
-    // Staff: Other village only, no add-on list - just the policy tick.
-    if (village && village !== STAFF_QUOTATION.village) throw ApiError.forbidden('Staff can only make Other village quotations');
+    // Staff: Other village or KDCC Employee, no add-on list - just the policy tick.
+    const v = village ?? STAFF_QUOTATION.village;
+    if (!STAFF_QUOTATION.villages.includes(v)) {
+      throw ApiError.forbidden('Staff can only make Other village or KDCC Employee quotations');
+    }
     if (picked.length) throw ApiError.badRequest('Add-ons are not available on staff quotations');
     const included = policyIncluded ?? true;
-    fields = { village: STAFF_QUOTATION.village, kind: 'STAFF', policyIncluded: included, ...staffPricing(category, included) };
+    fields = { village: v, kind: 'STAFF', policyIncluded: included, ...staffPricing(v, category, included) };
   } else {
     // Viewers: Piplav only.
     if (req.user!.role === UserRole.VIEWER && village && village !== QuotationVillage.PIPLAV) {
@@ -280,7 +283,7 @@ export const updateQuotation = catchAsync(async (req: Request, res: Response) =>
     quotation.set(packagePricing(brand, panelType, body.panelCount ?? quotation.panelCount!));
   } else if (quotation.kind === 'STAFF') {
     const included = body.policyIncluded ?? quotation.policyIncluded ?? true;
-    const p = staffPricing(category, included);
+    const p = staffPricing(quotation.village, category, included);
     quotation.set({ ...p, policyIncluded: included });
   } else {
     const pricing = quotation.pricingMode === 'ON_TOP' ? standardPricing : legacyStandardPricing;

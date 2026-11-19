@@ -28,7 +28,6 @@ import {
   packageVariant,
   type PackageBrand,
   QUOTATION_VILLAGE_LABEL,
-  STAFF_CATEGORY_OPTIONS,
   STAFF_POLICY_PRICE,
   staffQuotationTotal,
   type Quotation,
@@ -107,14 +106,14 @@ export function EditQuotationDialog({
   const panelType = watch('panelType');
   const setPanelType = React.useCallback((id: string) => setValue('panelType', id), [setValue]);
   const village = quotation?.village ?? 'PIPLAV';
-  const categoryOptions = isStaff ? STAFF_CATEGORY_OPTIONS : QUOTATION_CATEGORY_OPTIONS[village];
+  const categoryOptions = QUOTATION_CATEGORY_OPTIONS[village];
 
   // Preview of the new total (the server makes the final calculation).
   let total = quotation?.amount ?? 0;
   if (quotation && isPackage) {
     total = packageTotal(brand, panelType, panelCount).total;
   } else if (quotation && category) {
-    if (isStaff) total = staffQuotationTotal(category, policyIncluded).total;
+    if (isStaff) total = staffQuotationTotal(village, category, policyIncluded).total;
     else if (quotation.pricingMode === 'ON_TOP') {
       const base = categoryOptions.find((o) => o.value === category)?.amount ?? 0;
       total = base + (quotation.extras ?? []).reduce((s, e) => s + e.price, 0);

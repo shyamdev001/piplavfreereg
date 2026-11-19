@@ -1,12 +1,13 @@
 import { api } from '@/lib/axios';
 import type { PaginationMeta } from '@/types';
 
-export type QuotationVillage = 'PIPLAV' | 'OTHER';
+export type QuotationVillage = 'PIPLAV' | 'OTHER' | 'KDCC';
 export type QuotationCategory = 'GENERAL' | 'SC_ST' | 'PASHUPALAK';
 
 export const QUOTATION_VILLAGE_LABEL: Record<QuotationVillage, string> = {
   PIPLAV: 'Piplav',
   OTHER: 'Other village',
+  KDCC: 'KDCC Employee',
 };
 
 /** Same prices as the server (the server decides the final amount). */
@@ -23,6 +24,7 @@ export const QUOTATION_CATEGORY_OPTIONS: Record<
     { value: 'SC_ST', label: 'SC/ST', amount: 102695 },
     { value: 'PASHUPALAK', label: 'Pashupalak', amount: 108000 },
   ],
+  KDCC: [{ value: 'GENERAL', label: 'General', amount: 97290 }],
 };
 
 export const QUOTATION_CATEGORY_LABEL: Record<QuotationCategory, string> = {
@@ -223,13 +225,17 @@ export async function createPackageQuotation(input: CreatePackageQuotationInput)
   return data.quotation;
 }
 
-/** Staff quotations: other village, Rs 700 policy ticked by default. Keep in step with the server config. */
+/** Staff quotations: Other village or KDCC Employee, Rs 700 policy ticked by default. Keep in step with the server config. */
 export const STAFF_POLICY_PRICE = 700;
-export const STAFF_CATEGORY_OPTIONS = QUOTATION_CATEGORY_OPTIONS.OTHER;
+export const STAFF_VILLAGES: QuotationVillage[] = ['OTHER', 'KDCC'];
 
 /** Ticked: the policy is added on top of the system price. Unticked: it is left out. */
-export function staffQuotationTotal(category: QuotationCategory, policyIncluded: boolean) {
-  const systemPrice = STAFF_CATEGORY_OPTIONS.find((o) => o.value === category)?.amount ?? 0;
+export function staffQuotationTotal(
+  village: QuotationVillage,
+  category: QuotationCategory,
+  policyIncluded: boolean,
+) {
+  const systemPrice = QUOTATION_CATEGORY_OPTIONS[village].find((o) => o.value === category)?.amount ?? 0;
   return { systemPrice, total: systemPrice + (policyIncluded ? STAFF_POLICY_PRICE : 0) };
 }
 
@@ -237,6 +243,7 @@ export function staffQuotationTotal(category: QuotationCategory, policyIncluded:
 export const LEGACY_PACKAGE_PRICES: Record<QuotationVillage, Partial<Record<QuotationCategory, number>>> = {
   PIPLAV: { GENERAL: 97290, SC_ST: 102695 },
   OTHER: { GENERAL: 110700, SC_ST: 103395, PASHUPALAK: 108700 },
+  KDCC: { GENERAL: 97290 },
 };
 
 export type UpdateQuotationInput = Partial<{

@@ -63,7 +63,7 @@ const quotationSchema = z.object({
     .string()
     .trim()
     .regex(/^[0-9]{10}$/, 'Enter a valid 10-digit mobile number'),
-  village: z.enum(['PIPLAV', 'OTHER']),
+  village: z.enum(['PIPLAV', 'OTHER', 'KDCC']),
   category: z.enum(['GENERAL', 'SC_ST', 'PASHUPALAK']),
 });
 type QuotationForm = z.infer<typeof quotationSchema>;
@@ -194,21 +194,23 @@ function NewQuotationCard({
           </FormField>
 
           <FormField label="Village" htmlFor="village" required>
-            <div id="village" className="grid grid-cols-2 gap-2">
-              {((piplavOnly ? ['PIPLAV'] : ['PIPLAV', 'OTHER']) as QuotationVillage[]).map((value) => (
-                <label
-                  key={value}
-                  className="flex cursor-pointer items-center gap-2 rounded-xl border border-border/70 p-3 text-sm font-bold transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
-                >
-                  <input
-                    type="radio"
-                    value={value}
-                    className="accent-[hsl(var(--primary))]"
-                    {...register('village')}
-                  />
-                  {QUOTATION_VILLAGE_LABEL[value]}
-                </label>
-              ))}
+            <div id="village" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {((piplavOnly ? ['PIPLAV'] : ['PIPLAV', 'OTHER', 'KDCC']) as QuotationVillage[]).map(
+                (value) => (
+                  <label
+                    key={value}
+                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-border/70 p-3 text-sm font-bold transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                  >
+                    <input
+                      type="radio"
+                      value={value}
+                      className="accent-[hsl(var(--primary))]"
+                      {...register('village')}
+                    />
+                    {QUOTATION_VILLAGE_LABEL[value]}
+                  </label>
+                ),
+              )}
             </div>
           </FormField>
 

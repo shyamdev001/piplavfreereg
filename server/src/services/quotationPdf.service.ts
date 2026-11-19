@@ -10,6 +10,7 @@ import {
   STAFF_QUOTATION,
   PackageBrand,
   QuotationCategory,
+  QuotationVillage,
   packageSystemText,
 } from '../config/quotation';
 import { formatIndianAmount, rupeesInWords } from '../utils/amountInWords';
@@ -21,6 +22,8 @@ export interface QuotationPdfData {
   mobileNumber: string;
   /** Missing on package quotations (no category line is printed). */
   category?: QuotationCategory;
+  /** KDCC Employee quotations print that instead of the category. */
+  village?: QuotationVillage;
   /** Package quotations: brand and panel count give row 1's title and description. */
   kind?: string;
   brand?: PackageBrand;
@@ -206,7 +209,10 @@ export async function buildQuotationPdf(data: QuotationPdfData): Promise<Buffer>
   let billTop = infoTop + 22 + h;
   billTop += w.paragraph(data.address, col2, billTop, 8.5, 150, { color: MUTED });
   w.labelValue('Mobile:', data.mobileNumber, col2, billTop + 3, 8.5);
-  if (data.category) w.labelValue('Category:', QUOTATION_CATEGORY_LABELS[data.category], col2, billTop + 16, 8.5);
+  if (data.category) {
+    const label = data.village === 'KDCC' ? 'KDCC Employee' : QUOTATION_CATEGORY_LABELS[data.category];
+    w.labelValue('Category:', label, col2, billTop + 16, 8.5);
+  }
 
   const meta: Array<[string, string]> = [
     ['Date:', formatDate(data.quotationDate)],

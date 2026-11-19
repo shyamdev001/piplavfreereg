@@ -13,8 +13,10 @@ import { getErrorMessage } from '@/lib/axios';
 import { cn, formatCurrency } from '@/lib/utils';
 import * as quotationService from '@/services/quotation.service';
 import {
-  STAFF_CATEGORY_OPTIONS,
+  QUOTATION_CATEGORY_OPTIONS,
+  QUOTATION_VILLAGE_LABEL,
   STAFF_POLICY_PRICE,
+  STAFF_VILLAGES,
   staffQuotationTotal,
 } from '@/services/quotation.service';
 
@@ -36,13 +38,14 @@ const staffSchema = z.object({
     .string()
     .trim()
     .regex(/^[0-9]{10}$/, 'Enter a valid 10-digit mobile number'),
+  village: z.enum(['OTHER', 'KDCC']),
   category: z.enum(['GENERAL', 'SC_ST', 'PASHUPALAK']),
   policyIncluded: z.boolean(),
 });
 type StaffForm = z.infer<typeof staffSchema>;
 
 /**
- * Quotation form for staff: Other village only, same 2.18 kW system and prices,
+ * Quotation form for staff: Other village or KDCC Employee, same 2.18 kW system and prices,
  * with the Rs 700 policy ticked by default. Unticking it takes Rs 700 off the
  * total and the PDF says the policy is not included.
  */
@@ -52,24 +55,33 @@ export function StaffQuotationCard({ onCreated }: { onCreated: () => void }) {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<StaffForm>({
     resolver: zodResolver(staffSchema),
-    defaultValues: { category: 'GENERAL', policyIncluded: true },
+    defaultValues: { village: 'OTHER', category: 'GENERAL', policyIncluded: true },
   });
+  const village = watch('village');
   const category = watch('category');
   const policyIncluded = watch('policyIncluded');
-  const { systemPrice, total } = staffQuotationTotal(category, policyIncluded);
+  const categoryOptions = QUOTATION_CATEGORY_OPTIONS[village];
+  const { systemPrice, total } = staffQuotationTotal(village, category, policyIncluded);
+
+  // KDCC Employee is General only; fall back to General when the old choice isn't offered.
+  React.useEffect(() => {
+    if (!categoryOptions.some((o) => o.value === category)) setValue('category', 'GENERAL');
+  }, [categoryOptions, category, setValue]);
 
   const onSubmit = async (values: StaffForm) => {
     try {
-      const quotation = await quotationService.createQuotation({ ...values, village: 'OTHER', extras: [] });
+      const quotation = await quotationService.createQuotation({ ...values, extras: [] });
       quotationService.downloadQuotationPdf(quotation._id);
       toast.success(`Quotation ${quotation.quotationNumber} created. Downloading PDF...`);
       reset({
         customerName: '',
         address: '',
         mobileNumber: '',
+        village: values.village,
         category: values.category,
         policyIncluded: true,
       });
@@ -85,7 +97,7 @@ export function StaffQuotationCard({ onCreated }: { onCreated: () => void }) {
         <div className="flex items-start gap-3 rounded-xl bg-primary/[0.06] p-3.5">
           <Sun className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
           <div className="text-sm">
-            <p className="font-bold text-foreground">2.18 kW solar system · Other village</p>
+            <p className="font-bold text-foreground">2.18 kW solar system</p>
             <p className="text-muted-foreground">APS 545W panels × 4 · Inverter APS / Solaryaan / Velox</p>
           </div>
         </div>
@@ -121,9 +133,28 @@ export function StaffQuotationCard({ onCreated }: { onCreated: () => void }) {
             <Input id="mobileNumber" inputMode="numeric" maxLength={10} {...register('mobileNumber')} />
           </FormField>
 
+          <FormField label="Village" htmlFor="village" required>
+            <div id="village" className="grid grid-cols-2 gap-2">
+              {STAFF_VILLAGES.map((value) => (
+                <label
+                  key={value}
+                  className="flex cursor-pointer items-center gap-2 rounded-xl border border-border/70 p-3 text-sm font-bold transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                >
+                  <input
+                    type="radio"
+                    value={value}
+                    className="accent-[hsl(var(--primary))]"
+                    {...register('village')}
+                  />
+                  {QUOTATION_VILLAGE_LABEL[value]}
+                </label>
+              ))}
+            </div>
+          </FormField>
+
           <FormField label="Category" htmlFor="category" required>
             <div id="category" className="grid grid-cols-2 gap-2">
-              {STAFF_CATEGORY_OPTIONS.map((option) => (
+              {categoryOptions.map((option) => (
                 <label
                   key={option.value}
                   className="flex cursor-pointer flex-col gap-0.5 rounded-xl border border-border/70 p-3 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
