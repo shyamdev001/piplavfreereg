@@ -9,6 +9,8 @@ export const QuotationVillage = {
   OTHER: 'OTHER',
   /** KDCC bank employees: General only, same price as Piplav. */
   KDCC: 'KDCC',
+  /** Vadtal employees: General only. */
+  VADTAL: 'VADTAL',
 } as const;
 export type QuotationVillage = (typeof QuotationVillage)[keyof typeof QuotationVillage];
 
@@ -16,6 +18,7 @@ export const QUOTATION_VILLAGE_LABELS: Record<QuotationVillage, string> = {
   PIPLAV: 'Piplav',
   OTHER: 'Other',
   KDCC: 'KDCC Employee',
+  VADTAL: 'Vadtal Employee',
 };
 
 export const QuotationCategory = {
@@ -40,6 +43,7 @@ export const QUOTATION_PRICES: Record<QuotationVillage, Partial<Record<Quotation
   PIPLAV: { GENERAL: 97290, SC_ST: 102695 },
   OTHER: { GENERAL: 110000, SC_ST: 102695, PASHUPALAK: 108000 },
   KDCC: { GENERAL: 97290 },
+  VADTAL: { GENERAL: 108000 },
 };
 
 export function quotationPrice(village: QuotationVillage, category: QuotationCategory): number | undefined {
@@ -54,6 +58,7 @@ const LEGACY_PACKAGE_PRICES: Record<QuotationVillage, Partial<Record<QuotationCa
   PIPLAV: { GENERAL: 97290, SC_ST: 102695 },
   OTHER: { GENERAL: 110700, SC_ST: 103395, PASHUPALAK: 108700 },
   KDCC: { GENERAL: 97290 },
+  VADTAL: { GENERAL: 108000 },
 };
 
 export function legacyPackagePrice(village: QuotationVillage, category: QuotationCategory): number | undefined {
@@ -67,13 +72,13 @@ export const QUOTATION_SYSTEM = {
 };
 
 /**
- * Staff quotations (QUOTATION_STAFF role): Other village (default) or KDCC Employee,
+ * Staff quotations (QUOTATION_STAFF role): Other village (default), KDCC or Vadtal Employee,
  * same system and prices, with a policy that is ticked by default and added on top of the system
  * price. Unticked, it is left out and the PDF prints a "not included" note.
  */
 export const STAFF_QUOTATION = {
   village: 'OTHER' as QuotationVillage,
-  villages: ['OTHER', 'KDCC'] as QuotationVillage[],
+  villages: ['OTHER', 'KDCC', 'VADTAL'] as QuotationVillage[],
   policy: { name: 'Policy', price: 700 },
   policyNotIncludedNote: 'Note: Policy is not included in this quotation.',
 };

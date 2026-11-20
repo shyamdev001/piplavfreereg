@@ -63,7 +63,7 @@ const quotationSchema = z.object({
     .string()
     .trim()
     .regex(/^[0-9]{10}$/, 'Enter a valid 10-digit mobile number'),
-  village: z.enum(['PIPLAV', 'OTHER', 'KDCC']),
+  village: z.enum(['PIPLAV', 'OTHER', 'KDCC', 'VADTAL']),
   category: z.enum(['GENERAL', 'SC_ST', 'PASHUPALAK']),
 });
 type QuotationForm = z.infer<typeof quotationSchema>;
@@ -194,8 +194,8 @@ function NewQuotationCard({
           </FormField>
 
           <FormField label="Village" htmlFor="village" required>
-            <div id="village" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {((piplavOnly ? ['PIPLAV'] : ['PIPLAV', 'OTHER', 'KDCC']) as QuotationVillage[]).map(
+            <div id="village" className="grid grid-cols-2 gap-2">
+              {((piplavOnly ? ['PIPLAV'] : ['PIPLAV', 'OTHER', 'KDCC', 'VADTAL']) as QuotationVillage[]).map(
                 (value) => (
                   <label
                     key={value}

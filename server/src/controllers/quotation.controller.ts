@@ -58,7 +58,7 @@ async function findAccessible(req: Request) {
 const sum = (items: Array<{ price: number }>) => items.reduce((total, e) => total + e.price, 0);
 
 /**
- * Staff quotations: Other village or KDCC Employee, policy ticked by default. Ticked, the
+ * Staff quotations: Other village, KDCC or Vadtal Employee, policy ticked by default. Ticked, the
  * policy is added on top of the system price; unticked, it is left out.
  */
 function staffPricing(village: QuotationVillage, category: QuotationCategory, policyIncluded: boolean) {
@@ -193,10 +193,10 @@ export const createQuotation = catchAsync(async (req: Request, res: Response) =>
 
   let fields: Partial<IQuotation>;
   if (req.user!.role === UserRole.QUOTATION_STAFF) {
-    // Staff: Other village or KDCC Employee, no add-on list - just the policy tick.
+    // Staff: Other village, KDCC or Vadtal Employee, no add-on list - just the policy tick.
     const v = village ?? STAFF_QUOTATION.village;
     if (!STAFF_QUOTATION.villages.includes(v)) {
-      throw ApiError.forbidden('Staff can only make Other village or KDCC Employee quotations');
+      throw ApiError.forbidden('Staff can only make Other village, KDCC or Vadtal Employee quotations');
     }
     if (picked.length) throw ApiError.badRequest('Add-ons are not available on staff quotations');
     const included = policyIncluded ?? true;

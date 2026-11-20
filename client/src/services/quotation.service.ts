@@ -1,13 +1,14 @@
 import { api } from '@/lib/axios';
 import type { PaginationMeta } from '@/types';
 
-export type QuotationVillage = 'PIPLAV' | 'OTHER' | 'KDCC';
+export type QuotationVillage = 'PIPLAV' | 'OTHER' | 'KDCC' | 'VADTAL';
 export type QuotationCategory = 'GENERAL' | 'SC_ST' | 'PASHUPALAK';
 
 export const QUOTATION_VILLAGE_LABEL: Record<QuotationVillage, string> = {
   PIPLAV: 'Piplav',
   OTHER: 'Other village',
   KDCC: 'KDCC Employee',
+  VADTAL: 'Vadtal Employee',
 };
 
 /** Same prices as the server (the server decides the final amount). */
@@ -25,6 +26,7 @@ export const QUOTATION_CATEGORY_OPTIONS: Record<
     { value: 'PASHUPALAK', label: 'Pashupalak', amount: 108000 },
   ],
   KDCC: [{ value: 'GENERAL', label: 'General', amount: 97290 }],
+  VADTAL: [{ value: 'GENERAL', label: 'General', amount: 108000 }],
 };
 
 export const QUOTATION_CATEGORY_LABEL: Record<QuotationCategory, string> = {
@@ -225,9 +227,9 @@ export async function createPackageQuotation(input: CreatePackageQuotationInput)
   return data.quotation;
 }
 
-/** Staff quotations: Other village or KDCC Employee, Rs 700 policy ticked by default. Keep in step with the server config. */
+/** Staff quotations: Other village, KDCC or Vadtal Employee, Rs 700 policy ticked by default. Keep in step with the server config. */
 export const STAFF_POLICY_PRICE = 700;
-export const STAFF_VILLAGES: QuotationVillage[] = ['OTHER', 'KDCC'];
+export const STAFF_VILLAGES: QuotationVillage[] = ['OTHER', 'KDCC', 'VADTAL'];
 
 /** Ticked: the policy is added on top of the system price. Unticked: it is left out. */
 export function staffQuotationTotal(
@@ -244,6 +246,7 @@ export const LEGACY_PACKAGE_PRICES: Record<QuotationVillage, Partial<Record<Quot
   PIPLAV: { GENERAL: 97290, SC_ST: 102695 },
   OTHER: { GENERAL: 110700, SC_ST: 103395, PASHUPALAK: 108700 },
   KDCC: { GENERAL: 97290 },
+  VADTAL: { GENERAL: 108000 },
 };
 
 export type UpdateQuotationInput = Partial<{

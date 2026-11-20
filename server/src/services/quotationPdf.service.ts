@@ -7,6 +7,7 @@ import {
   QUOTATION_NOTES,
   QUOTATION_SELLER,
   QUOTATION_SYSTEM,
+  QUOTATION_VILLAGE_LABELS,
   STAFF_QUOTATION,
   PackageBrand,
   QuotationCategory,
@@ -22,7 +23,7 @@ export interface QuotationPdfData {
   mobileNumber: string;
   /** Missing on package quotations (no category line is printed). */
   category?: QuotationCategory;
-  /** KDCC Employee quotations print that instead of the category. */
+  /** KDCC / Vadtal Employee quotations print that instead of the category. */
   village?: QuotationVillage;
   /** Package quotations: brand and panel count give row 1's title and description. */
   kind?: string;
@@ -210,7 +211,8 @@ export async function buildQuotationPdf(data: QuotationPdfData): Promise<Buffer>
   billTop += w.paragraph(data.address, col2, billTop, 8.5, 150, { color: MUTED });
   w.labelValue('Mobile:', data.mobileNumber, col2, billTop + 3, 8.5);
   if (data.category) {
-    const label = data.village === 'KDCC' ? 'KDCC Employee' : QUOTATION_CATEGORY_LABELS[data.category];
+    const employee = data.village === 'KDCC' || data.village === 'VADTAL';
+    const label = employee ? QUOTATION_VILLAGE_LABELS[data.village!] : QUOTATION_CATEGORY_LABELS[data.category];
     w.labelValue('Category:', label, col2, billTop + 16, 8.5);
   }
 

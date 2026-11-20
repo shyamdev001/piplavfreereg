@@ -38,14 +38,14 @@ const staffSchema = z.object({
     .string()
     .trim()
     .regex(/^[0-9]{10}$/, 'Enter a valid 10-digit mobile number'),
-  village: z.enum(['OTHER', 'KDCC']),
+  village: z.enum(['OTHER', 'KDCC', 'VADTAL']),
   category: z.enum(['GENERAL', 'SC_ST', 'PASHUPALAK']),
   policyIncluded: z.boolean(),
 });
 type StaffForm = z.infer<typeof staffSchema>;
 
 /**
- * Quotation form for staff: Other village or KDCC Employee, same 2.18 kW system and prices,
+ * Quotation form for staff: Other village, KDCC or Vadtal Employee, same 2.18 kW system and prices,
  * with the Rs 700 policy ticked by default. Unticking it takes Rs 700 off the
  * total and the PDF says the policy is not included.
  */
@@ -67,7 +67,7 @@ export function StaffQuotationCard({ onCreated }: { onCreated: () => void }) {
   const categoryOptions = QUOTATION_CATEGORY_OPTIONS[village];
   const { systemPrice, total } = staffQuotationTotal(village, category, policyIncluded);
 
-  // KDCC Employee is General only; fall back to General when the old choice isn't offered.
+  // KDCC / Vadtal Employee are General only; fall back to General when the old choice isn't offered.
   React.useEffect(() => {
     if (!categoryOptions.some((o) => o.value === category)) setValue('category', 'GENERAL');
   }, [categoryOptions, category, setValue]);
@@ -134,7 +134,7 @@ export function StaffQuotationCard({ onCreated }: { onCreated: () => void }) {
           </FormField>
 
           <FormField label="Village" htmlFor="village" required>
-            <div id="village" className="grid grid-cols-2 gap-2">
+            <div id="village" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {STAFF_VILLAGES.map((value) => (
                 <label
                   key={value}
