@@ -147,6 +147,21 @@ describe('Package quotations (APS / Adani / Waaree, 6-10 panels)', () => {
     expect(details).toContain('System: 3.24 kW ADANI Mono Bifacial 540W -> 3.66 kW ADANI TOPCon 610W');
   });
 
+  it('filters the list into 2.18 kW and bigger systems', async () => {
+    const { cookie } = await cookieFor(UserRole.QUOTATION);
+    await make(cookie, { brand: 'APS', panelCount: 7 });
+    await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL' });
+    const list = (system?: string) =>
+      request(app).get('/api/quotations').query(system ? { system } : {}).set('Cookie', cookie);
+    expect((await list()).body.quotations).toHaveLength(2);
+    const big = (await list('PACKAGE')).body.quotations;
+    expect(big.map((q: { kind: string }) => q.kind)).toEqual(['PACKAGE']);
+    const small = (await list('SMALL')).body.quotations;
+    expect(small).toHaveLength(1);
+    expect(small[0].systemSizeKw).toBe(2.18);
+    expect((await list('HUGE')).status).toBe(400);
+  });
+
   it('keeps package fields off the 2.18 kW quotations', async () => {
     const { cookie } = await cookieFor(UserRole.QUOTATION);
     const q = await request(app).post('/api/quotations').set('Cookie', cookie).send({ ...customer, category: 'GENERAL' });

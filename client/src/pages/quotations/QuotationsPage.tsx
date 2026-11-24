@@ -356,6 +356,8 @@ export function QuotationsPage() {
   // Admins and viewers can narrow the list to one person's quotations.
   const [makers, setMakers] = React.useState<Agent[]>([]);
   const [createdBy, setCreatedBy] = React.useState('');
+  // Show all quotations, only 2.18 kW ones, or only the bigger systems.
+  const [system, setSystem] = React.useState<'' | 'SMALL' | 'PACKAGE'>('');
   React.useEffect(() => {
     if (!canSeeHistory) return;
     agentService
@@ -370,6 +372,7 @@ export function QuotationsPage() {
       .listQuotations({
         search: debouncedSearch || undefined,
         createdBy: createdBy || undefined,
+        system: system || undefined,
         page,
         limit: 20,
       })
@@ -379,7 +382,7 @@ export function QuotationsPage() {
       })
       .catch((err) => toast.error(getErrorMessage(err)))
       .finally(() => setLoading(false));
-  }, [debouncedSearch, createdBy, page]);
+  }, [debouncedSearch, createdBy, system, page]);
 
   React.useEffect(() => {
     load();
@@ -387,7 +390,7 @@ export function QuotationsPage() {
 
   React.useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, createdBy]);
+  }, [debouncedSearch, createdBy, system]);
 
   const [extras, setExtras] = React.useState<QuotationExtra[]>([]);
   const loadExtras = React.useCallback(() => {
@@ -504,12 +507,41 @@ export function QuotationsPage() {
             )}
           </div>
 
+          <div
+            role="group"
+            aria-label="Filter by system"
+            className="grid grid-cols-3 gap-1 rounded-xl border border-border/70 bg-muted/40 p-1"
+          >
+            {(
+              [
+                ['', 'All'],
+                ['SMALL', '2.18 kW'],
+                ['PACKAGE', 'Bigger systems'],
+              ] as const
+            ).map(([value, text]) => (
+              <button
+                key={value || 'ALL'}
+                type="button"
+                aria-pressed={system === value}
+                onClick={() => setSystem(value)}
+                className={cn(
+                  'rounded-lg px-2 py-1.5 text-sm font-bold transition-colors',
+                  system === value
+                    ? 'bg-background text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+
           {loading ? (
             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24" />)
           ) : quotations.length === 0 ? (
             <EmptyState
               icon={<FileText className="h-6 w-6" />}
-              title={debouncedSearch ? 'No matching quotations' : 'No quotations yet'}
+              title={debouncedSearch || system ? 'No matching quotations' : 'No quotations yet'}
               description={canCreate && !debouncedSearch ? 'Your quotations will appear here.' : undefined}
             />
           ) : (

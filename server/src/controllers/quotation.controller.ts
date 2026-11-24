@@ -315,15 +315,19 @@ export const updateQuotation = catchAsync(async (req: Request, res: Response) =>
 });
 
 export const listQuotations = catchAsync(async (req: Request, res: Response) => {
-  const { search, createdBy, page, limit } = req.query as unknown as {
+  const { search, createdBy, system, page, limit } = req.query as unknown as {
     search?: string;
     createdBy?: string;
+    system?: 'SMALL' | 'PACKAGE';
     page: number;
     limit: number;
   };
   const query: FilterQuery<IQuotation> = scopeFor(req);
   // Admins and viewers can narrow the list to one person's quotations.
   if (createdBy && !OWN_ONLY_ROLES.includes(req.user!.role)) query.createdBy = createdBy;
+  // Older quotations have no kind; they are all 2.18 kW.
+  if (system === 'PACKAGE') query.kind = 'PACKAGE';
+  else if (system === 'SMALL') query.kind = { $ne: 'PACKAGE' };
   if (search) {
     const rx = new RegExp(escapeRegex(search), 'i');
     query.$or = [{ customerName: rx }, { mobileNumber: rx }, { quotationNumber: rx }];

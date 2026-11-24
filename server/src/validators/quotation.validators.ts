@@ -86,6 +86,8 @@ export const quotationHistoryQuerySchema = z.object({
 export const listQuotationsQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   createdBy: objectId.optional(),
+  // SMALL = 2.18 kW quotations, PACKAGE = bigger APS / Adani / Waaree systems.
+  system: z.enum(['SMALL', 'PACKAGE']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });

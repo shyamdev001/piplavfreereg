@@ -315,6 +315,8 @@ export function quotationHistoryExportUrl(filters: QuotationHistoryFilters): str
 export async function listQuotations(params: {
   search?: string;
   createdBy?: string;
+  /** SMALL = 2.18 kW, PACKAGE = bigger APS / Adani / Waaree systems. */
+  system?: 'SMALL' | 'PACKAGE';
   page?: number;
   limit?: number;
 }): Promise<{
